@@ -3,6 +3,15 @@
     <channel>
         <title>KeyType</title>
         <item>
+            <title>1.7</title>
+            <pubDate>Sat, 29 Aug 2026 01:32:56 +0800</pubDate>
+            <sparkle:version>10</sparkle:version>
+            <sparkle:shortVersionString>1.7</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description><![CDATA[<h2>New Features</h2><ul><li>Add input method controls</li><li>batch correction scoring paths</li><li>adapt beam search work</li><li>promote generated frontier state</li><li>stage long burst decoding</li><li>four token default completions</li><li>context aware token budgets</li><li>Grammar correction</li><li>Typo correction</li><li>Add LFM2.5-8B-A1B-Base for high RAM Macs</li><li>Enable writing history and clipboard history by default</li></ul><h2>Bug Fixes</h2><ul><li>resolve bare detected-language tags to the user's regional spelling dictionary (#41)</li><li>restore ModelSetupCoordinator.swift and anchor the Models/ gitignore rule (#40)</li><li>Remove agressive correction path</li></ul>]]></description>
+            <enclosure url="https://github.com/johnbean393/KeyType/releases/download/v1.7.0/KeyType.1.7.dmg" sparkle:edSignature="889Qw78hn5+i5fYK28nrlqqGl4gubMrTVRG4JdLJX/zIWXNTX/rXjCrIANDmf6b5oYqJieeKvAa0PcHePfVOAw==" length="15081053" type="application/octet-stream"/>
+        </item>
+        <item>
             <title>1.6</title>
             <pubDate>Sat, 27 Jun 2026 15:13:37 +0800</pubDate>
             <sparkle:version>8</sparkle:version>
