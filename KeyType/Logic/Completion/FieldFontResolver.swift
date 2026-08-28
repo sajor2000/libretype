@@ -10,6 +10,7 @@
 import AppKit
 import ApplicationServices
 import CompletionUI
+import CoreText
 
 /// The text attributes read from the focused field, so the ghost-text overlay can match it. Values
 /// may be `nil` when the app does not surface them through AX.
@@ -52,8 +53,11 @@ enum FieldFontResolver {
     private static let axFontAttribute = NSAttributedString.Key("AXFont")
     private static let axFontNameKey = "AXFontName" // PostScript name, usable by NSFont(name:size:)
     private static let axFontSizeKey = "AXFontSize"
+    private static let axFontFamilyKey = "AXFontFamily"
+    private static let axVisibleNameKey = "AXVisibleName"
     // AX foreground color: the attribute value is a `CGColor` (CFType), not an `NSColor`.
     private static let axForegroundColorAttribute = NSAttributedString.Key("AXForegroundColor")
+    private static var registeredBundledFontFamilies: Set<String> = []
 
     /// The text attributes around the insertion point of the system-wide focused element.
     /// Reads `AXAttributedStringForRange` over a 1-character probe at the caret once, then extracts
@@ -168,10 +172,87 @@ enum FieldFontResolver {
         let size = (info[axFontSizeKey] as? CGFloat)
             ?? (info[axFontSizeKey] as? Double).map { CGFloat($0) }
             ?? NSFont.systemFontSize
-        if let name = info[axFontNameKey] as? String, let font = NSFont(name: name, size: size) {
-            return font
+        let name = info[axFontNameKey] as? String
+        let family = info[axFontFamilyKey] as? String
+        let visibleName = info[axVisibleNameKey] as? String
+        registerBundledFontFamilyIfNeeded(
+            family,
+            bundleIdentifier: NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+        )
+        for candidate in fontNameCandidates(name: name, family: family, visibleName: visibleName) {
+            if let font = NSFont(name: candidate, size: size) {
+                return font
+            }
         }
         return NSFont.systemFont(ofSize: size)
+    }
+
+    nonisolated static func fontNameCandidates(
+        name: String?,
+        family: String?,
+        visibleName: String?
+    ) -> [String] {
+        let nameMatchesFamily: Bool = {
+            guard let name, let family else { return true }
+            let normalizedName = normalizedFontIdentity(name)
+            let normalizedFamily = normalizedFontIdentity(family)
+            return !normalizedFamily.isEmpty && normalizedName.contains(normalizedFamily)
+        }()
+
+        let familyCandidates = [visibleName, visibleName?.replacingOccurrences(of: " ", with: "-"), family]
+        let ordered = nameMatchesFamily
+            ? [name] + familyCandidates
+            : familyCandidates + [name]
+        var seen = Set<String>()
+        return ordered.compactMap { candidate in
+            guard let candidate, !candidate.isEmpty, seen.insert(candidate).inserted else {
+                return nil
+            }
+            return candidate
+        }
+    }
+
+    private nonisolated static func normalizedFontIdentity(_ value: String) -> String {
+        value.lowercased().filter(\.isLetter)
+    }
+
+    private static func registerBundledFontFamilyIfNeeded(
+        _ family: String?,
+        bundleIdentifier: String?
+    ) {
+        guard bundleIdentifier == "com.microsoft.Word",
+              let family,
+              !family.isEmpty,
+              let appURL = NSRunningApplication.runningApplications(
+                  withBundleIdentifier: "com.microsoft.Word"
+              ).first?.bundleURL else {
+            return
+        }
+
+        let registrationKey = "\(bundleIdentifier ?? "")|\(normalizedFontIdentity(family))"
+        guard !registeredBundledFontFamilies.contains(registrationKey) else { return }
+
+        let directory = appURL
+            .appendingPathComponent("Contents", isDirectory: true)
+            .appendingPathComponent("Resources", isDirectory: true)
+            .appendingPathComponent("DFonts", isDirectory: true)
+        let normalizedFamily = normalizedFontIdentity(family)
+        let urls = (try? FileManager.default.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: nil,
+            options: [.skipsHiddenFiles]
+        ))?.filter { url in
+            ["otf", "ttf", "ttc"].contains(url.pathExtension.lowercased())
+                && normalizedFontIdentity(url.deletingPathExtension().lastPathComponent)
+                    .hasPrefix(normalizedFamily)
+        } ?? []
+        guard !urls.isEmpty else { return }
+
+        for url in urls {
+            var error: Unmanaged<CFError>?
+            _ = CTFontManagerRegisterFontsForURL(url as CFURL, .process, &error)
+        }
+        registeredBundledFontFamilies.insert(registrationKey)
     }
 
     /// A length-1 range at (or just before) the caret. AX text APIs return nothing for a zero-length

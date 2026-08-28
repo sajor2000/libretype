@@ -49,6 +49,22 @@ struct KeyTypeTests {
         TextFieldContext(beforeCursor: beforeCursor + typedSinceAnchor, target: target)
     }
 
+    @Test func fontResolverPrefersVisibleFamilyWhenAXPostScriptNameDisagrees() {
+        #expect(FieldFontResolver.fontNameCandidates(
+            name: "Helvetica",
+            family: "Aptos",
+            visibleName: "Aptos"
+        ) == ["Aptos", "Helvetica"])
+    }
+
+    @Test func fontResolverKeepsMatchingPostScriptStyleFirst() {
+        #expect(FieldFontResolver.fontNameCandidates(
+            name: "Helvetica-Bold",
+            family: "Helvetica",
+            visibleName: "Helvetica Bold"
+        ).first == "Helvetica-Bold")
+    }
+
     @Test func adaptiveDebounceUsesFastPathAfterResponsiveGeneration() {
         #expect(CompletionController.adaptiveDebounceNanoseconds(lastGenerationLatencyMs: 35) == 15_000_000)
     }

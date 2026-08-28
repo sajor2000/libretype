@@ -3746,3 +3746,22 @@ text. Both are now closed:
   losing it under standard layouts or other methods. Keyboard layouts and selectable input modes
   appear alongside third-party input methods because those are the actual mutually exclusive source
   choices reported by macOS. The loaded model stays resident, so re-enabling does not pay reload cost.
+
+## ADR-124 — Resolve Word fonts from its process-local family metadata
+
+- Date: 2026-08-29
+- Status: accepted
+- Context: Microsoft Word exposes default Aptos body text through AX with `AXFontFamily=Aptos` and
+  `AXVisibleName=Aptos`, but reports `AXFontName=Helvetica`. KeyType previously trusted only the
+  PostScript-name field, so the overlay rendered Helvetica. Aptos is bundled inside Word and is not
+  visible to `NSFont` in KeyType's process unless it is registered there.
+- Decision: When an AX PostScript name disagrees with the reported family, try the visible/family
+  names before the PostScript-name fallback. For Word, resolve its running bundle URL and register
+  only matching files from `Contents/Resources/DFonts` with Core Text's process scope before font
+  lookup. Keep the existing system-font fallback when the app, family, or resource is unavailable.
+  Treat this as recovery of malformed AX style metadata in `FieldFontResolver`, not a completion
+  policy override in `AppCompatibility`.
+- Consequences: Word ghost text can use the same privately bundled Aptos face without installing or
+  registering fonts system-wide, and updates or nonstandard Word install locations continue to work
+  because the running bundle supplies the path. Other apps retain their reported PostScript font
+  whenever it agrees with the family, while missing bundled fonts degrade to the prior behavior.

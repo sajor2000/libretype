@@ -46,6 +46,7 @@ public struct FocusedFieldReader {
     private static let appCaretGeometryFallbacks: [any AppCaretGeometryFallback.Type] = [
         MailSingleLineCaretGeometryFallback.self,
         OutlookCaretGeometryFallback.self,
+        WordSearchCaretGeometryFallback.self,
         MessagesRichPreviewCaretGeometryFallback.self,
         CodeEditorCaretGeometryFallback.self
     ]
