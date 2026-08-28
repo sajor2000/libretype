@@ -223,7 +223,7 @@ final class AppCompatibilityTests: XCTestCase {
         XCTAssertEqual(policy.verticalAlignmentOffset(18), 28, accuracy: 0.001)
     }
 
-    func testChromeChatGPTMatchesComposerFontSizeWithoutAffectingSafari() {
+    func testChatGPTKeepsBrowserSpecificFontAndTallComposerBaseline() {
         let chromeTarget = AppTarget(
             bundleIdentifier: "com.google.Chrome",
             appName: "Chrome",
@@ -249,6 +249,8 @@ final class AppCompatibilityTests: XCTestCase {
 
         XCTAssertEqual(chromePolicy.fontSizeAdjustmentFactor, 0.95, accuracy: 0.001)
         XCTAssertEqual(safariPolicy.fontSizeAdjustmentFactor, 0.98, accuracy: 0.001)
+        XCTAssertEqual(chromePolicy.verticalAlignmentOffset(24), 28, accuracy: 0.001)
+        XCTAssertEqual(safariPolicy.verticalAlignmentOffset(24), 0, accuracy: 0.001)
     }
 
     func testXcodeFindFieldMatchesCompactQueryFontWithoutAffectingSourceEditor() {

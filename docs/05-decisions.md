@@ -3802,3 +3802,19 @@ text. Both are now closed:
   wraps land beside the visible caret instead of over earlier text. Genuine mid-line ranges stay
   unchanged and continue through the existing insertion-safety suppression; other apps and
   ChatWise fields outside the composer geometry are unaffected.
+
+## ADR-127 — Keep Safari ChatGPT on its native web-caret baseline at every composer height
+
+- Date: 2026-08-29
+- Status: accepted
+- Context: Safari's broad compatibility policy lowers ghost text by 28 points for large web
+  editors, while compact web fields use their native exact caret baseline. ChatGPT's composer grows
+  from 24 or 48 points to 96 points after a blank paragraph, crossing that compact-field threshold
+  even though Safari continues to report an exact, visually aligned caret. The global adjustment
+  therefore moved only the later-paragraph ghost text below the composer.
+- Decision: Add a Safari-and-`chatgpt.com` compatibility override that cancels the browser-wide
+  28-point vertical adjustment. Keep the existing Safari font factor, compact-field behavior, and
+  the global adjustment for every other Safari domain.
+- Consequences: ChatGPT first lines, hard line breaks, blank paragraphs, and soft wraps all use the
+  same native AX baseline as the visible caret. Other Safari web editors retain their established
+  adjustment, and Chrome's separate ChatGPT font tuning is unchanged.

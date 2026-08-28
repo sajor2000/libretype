@@ -102,6 +102,11 @@ public extension AppCompatibilityStore {
                 fontSizeAdjustmentFactor: 0.95
             ),
             TargetOverride(
+                bundleIdentifier: "com.apple.Safari",
+                domain: "chatgpt.com",
+                verticalAlignmentOffset: { _ in -28 }
+            ),
+            TargetOverride(
                 bundleIdentifier: "com.microsoft.Excel",
                 completionsDisabled: true,
                 tabShortcutsDisabled: true,
