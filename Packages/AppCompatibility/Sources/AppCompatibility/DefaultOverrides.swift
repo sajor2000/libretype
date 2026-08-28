@@ -97,6 +97,11 @@ public extension AppCompatibilityStore {
                 verticalAlignmentOffset: { _ in 28 }
             ),
             TargetOverride(
+                bundleIdentifier: "com.google.Chrome",
+                domain: "chatgpt.com",
+                fontSizeAdjustmentFactor: 0.95
+            ),
+            TargetOverride(
                 bundleIdentifier: "com.microsoft.Excel",
                 completionsDisabled: true,
                 tabShortcutsDisabled: true,

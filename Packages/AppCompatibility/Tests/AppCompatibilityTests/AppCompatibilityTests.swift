@@ -223,6 +223,34 @@ final class AppCompatibilityTests: XCTestCase {
         XCTAssertEqual(policy.verticalAlignmentOffset(18), 28, accuracy: 0.001)
     }
 
+    func testChromeChatGPTMatchesComposerFontSizeWithoutAffectingSafari() {
+        let chromeTarget = AppTarget(
+            bundleIdentifier: "com.google.Chrome",
+            appName: "Chrome",
+            domain: "chatgpt.com"
+        )
+        let safariTarget = AppTarget(
+            bundleIdentifier: "com.apple.Safari",
+            appName: "Safari",
+            domain: "chatgpt.com"
+        )
+        let traits = TextFieldTraits(isWebField: true)
+
+        let chromePolicy = AppCompatibilityStore().policy(for: TextFieldContext(
+            beforeCursor: "hello",
+            target: chromeTarget,
+            traits: traits
+        ))
+        let safariPolicy = AppCompatibilityStore().policy(for: TextFieldContext(
+            beforeCursor: "hello",
+            target: safariTarget,
+            traits: traits
+        ))
+
+        XCTAssertEqual(chromePolicy.fontSizeAdjustmentFactor, 0.95, accuracy: 0.001)
+        XCTAssertEqual(safariPolicy.fontSizeAdjustmentFactor, 0.98, accuracy: 0.001)
+    }
+
     func testChromeGoogleDocsKeepsDomainPolicyWithBrowserVerticalNudge() {
         let target = AppTarget(
             bundleIdentifier: "com.google.Chrome",

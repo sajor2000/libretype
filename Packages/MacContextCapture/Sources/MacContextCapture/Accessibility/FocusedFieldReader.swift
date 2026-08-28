@@ -465,6 +465,8 @@ public struct FocusedFieldReader {
 /// Helpers that walk up the AX tree to populate the environment-level fields on `AppTarget`.
 @MainActor
 enum AppTargetResolver {
+    nonisolated static let ancestorTraversalLimit = 64
+
     static func bundleIdentifier(for element: AXUIElement) -> String {
         AXCaretHelper.pid(of: element)
             .flatMap { NSRunningApplication(processIdentifier: $0) }?
@@ -585,31 +587,24 @@ enum AppTargetResolver {
     }
 
     private static func findAncestorWindow(of element: AXUIElement) -> AXUIElement? {
-        var current: AXUIElement? = element
-        var depth = 0
-        while let node = current, depth < 12 {
-            let role = AXCaretHelper.stringValue(for: kAXRoleAttribute as CFString, on: node)
-            if role == kAXWindowRole as String {
-                return node
-            }
-            current = AXCaretHelper.parentElement(of: node)
-            depth += 1
-        }
-        return nil
+        firstMatchingAncestor(
+            from: element,
+            matches: {
+                AXCaretHelper.stringValue(for: kAXRoleAttribute as CFString, on: $0)
+                    == kAXWindowRole as String
+            },
+            parent: AXCaretHelper.parentElement
+        )
     }
 
     private static func findAncestorWebArea(of element: AXUIElement) -> AXUIElement? {
-        var current: AXUIElement? = element
-        var depth = 0
-        while let node = current, depth < 12 {
-            let role = AXCaretHelper.stringValue(for: kAXRoleAttribute as CFString, on: node)
-            if role == "AXWebArea" {
-                return node
-            }
-            current = AXCaretHelper.parentElement(of: node)
-            depth += 1
-        }
-        return nil
+        firstMatchingAncestor(
+            from: element,
+            matches: {
+                AXCaretHelper.stringValue(for: kAXRoleAttribute as CFString, on: $0) == "AXWebArea"
+            },
+            parent: AXCaretHelper.parentElement
+        )
     }
 
     /// Best-effort browser domain extraction:
@@ -640,20 +635,39 @@ enum AppTargetResolver {
     }
 
     private static func findWebAreaURL(from element: AXUIElement) -> URL? {
-        // Walk up to find an AXWebArea; bounded so we don't roam the full tree.
-        var current: AXUIElement? = element
+        // Chromium can nest modern contenteditable fields under dozens of AX groups. Keep this
+        // walk bounded, but deep enough to reach the owning web area and its URL.
+        guard let webArea = firstMatchingAncestor(
+            from: element,
+            matches: {
+                AXCaretHelper.stringValue(for: kAXRoleAttribute as CFString, on: $0) == "AXWebArea"
+            },
+            parent: AXCaretHelper.parentElement
+        ) else {
+            return nil
+        }
+
+        if let value = AXCaretHelper.copyAttributeValue("AXURL" as CFString, on: webArea) {
+            if let url = value as? URL { return url }
+            if let nsURL = value as? NSURL { return nsURL as URL }
+            if let urlString = value as? String, let url = URL(string: urlString) { return url }
+        }
+        return nil
+    }
+
+    nonisolated static func firstMatchingAncestor<Node>(
+        from element: Node,
+        maxDepth: Int = ancestorTraversalLimit,
+        matches: (Node) -> Bool,
+        parent: (Node) -> Node?
+    ) -> Node? {
+        var current: Node? = element
         var depth = 0
-        while let node = current, depth < 12 {
-            let role = AXCaretHelper.stringValue(for: kAXRoleAttribute as CFString, on: node)
-            if role == "AXWebArea" {
-                if let value = AXCaretHelper.copyAttributeValue("AXURL" as CFString, on: node) {
-                    if let url = value as? URL { return url }
-                    if let nsURL = value as? NSURL { return nsURL as URL }
-                    if let urlString = value as? String, let url = URL(string: urlString) { return url }
-                }
-                return nil
+        while let node = current, depth < maxDepth {
+            if matches(node) {
+                return node
             }
-            current = AXCaretHelper.parentElement(of: node)
+            current = parent(node)
             depth += 1
         }
         return nil
