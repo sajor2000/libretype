@@ -44,6 +44,7 @@ public struct FocusedFieldSnapshot: Equatable {
 @MainActor
 public struct FocusedFieldReader {
     private static let appCaretGeometryFallbacks: [any AppCaretGeometryFallback.Type] = [
+        MailSingleLineCaretGeometryFallback.self,
         MessagesRichPreviewCaretGeometryFallback.self,
         CodeEditorCaretGeometryFallback.self
     ]

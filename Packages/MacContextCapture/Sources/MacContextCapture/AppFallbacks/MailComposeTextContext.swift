@@ -6,7 +6,7 @@ import Foundation
 
 @MainActor
 enum MailComposeTextContext {
-    static let bundleIdentifier = "com.apple.mail"
+    nonisolated static let bundleIdentifier = "com.apple.mail"
 
     static func snapshot(
         of element: AXUIElement,
