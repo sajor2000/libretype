@@ -77,6 +77,10 @@ public final class AppBundleWebAppClassifier: @unchecked Sendable {
     }
 
     static func bundleIdentifierIsKnownWebBacked(_ bundleIdentifier: String) -> Bool {
+        bundleIdentifierIsBrowser(bundleIdentifier)
+    }
+
+    static func bundleIdentifierIsBrowser(_ bundleIdentifier: String) -> Bool {
         knownWebBackedBrowserBundleIdentifiers.contains(bundleIdentifier)
     }
 

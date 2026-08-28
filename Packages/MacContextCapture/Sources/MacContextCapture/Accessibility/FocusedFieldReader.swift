@@ -542,15 +542,33 @@ enum AppTargetResolver {
         let metadata = ([placeholder] + labels.map(Optional.some))
             .compactMap { $0?.lowercased() }
             .joined(separator: " ")
+        let hasWebAreaAncestor = findAncestorWebArea(of: element) != nil
+        let appIsWebBacked = webAppClassifier.isWebBacked(
+            bundleIdentifier: target.bundleIdentifier
+        )
+        let appIsBrowser = AppBundleWebAppClassifier.bundleIdentifierIsBrowser(
+            target.bundleIdentifier
+        )
 
         return TextFieldTraits(
             isSecureTextEntry: isSecure,
             isPasswordField: fieldMetadataLooksPasswordLike(metadata),
             isPasswordManagerContext: passwordManagerBundleIDs.contains(target.bundleIdentifier),
-            isWebField: findAncestorWebArea(of: element) != nil
-                || webAppClassifier.isWebBacked(bundleIdentifier: target.bundleIdentifier),
+            isWebField: resolvesAsWebField(
+                hasWebAreaAncestor: hasWebAreaAncestor,
+                appIsWebBacked: appIsWebBacked,
+                appIsBrowser: appIsBrowser
+            ),
             isTerminalLike: terminalBundleIDs.contains(target.bundleIdentifier)
         )
+    }
+
+    nonisolated static func resolvesAsWebField(
+        hasWebAreaAncestor: Bool,
+        appIsWebBacked: Bool,
+        appIsBrowser: Bool
+    ) -> Bool {
+        hasWebAreaAncestor || (appIsWebBacked && !appIsBrowser)
     }
 
     private static let terminalBundleIDs: Set<String> = [
