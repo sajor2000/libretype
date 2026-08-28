@@ -48,6 +48,7 @@ public struct FocusedFieldReader {
         OutlookCaretGeometryFallback.self,
         WordSearchCaretGeometryFallback.self,
         XcodeFindCaretGeometryFallback.self,
+        ChatWiseCaretGeometryFallback.self,
         MessagesRichPreviewCaretGeometryFallback.self,
         CodeEditorCaretGeometryFallback.self
     ]
@@ -79,7 +80,15 @@ public struct FocusedFieldReader {
         let target = AppTargetResolver.resolveAppTarget(for: textElement)
 
         let rawValue = AXCaretHelper.stringValue(for: kAXValueAttribute as CFString, on: textElement) ?? ""
-        let axRange = AXCaretHelper.rangeValue(for: kAXSelectedTextRangeAttribute as CFString, on: textElement)
+        let rawAXRange = AXCaretHelper.rangeValue(
+            for: kAXSelectedTextRangeAttribute as CFString,
+            on: textElement
+        )
+        let axRange = ChatWiseTextContextFallback.correctedSelectionRange(
+            bundleIdentifier: initialBundleIdentifier,
+            text: rawValue,
+            range: rawAXRange
+        )
         let selectedTextAttr = AXCaretHelper.stringValue(for: kAXSelectedTextAttribute as CFString, on: textElement)
 
         // Selectable text fields almost always expose either AXValue or AXSelectedTextRange.

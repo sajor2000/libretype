@@ -3783,3 +3783,22 @@ text. Both are now closed:
 - Consequences: Find and Replace ghost text begins at the actual query caret with the query's font,
   while first lines, later lines, blank paragraphs, and soft wraps in the source editor remain
   unchanged. Narrow Xcode search controls are ignored rather than receiving a speculative offset.
+
+## ADR-126 — Repair ChatWise's multiline end range and soft-wrap caret independently
+
+- Date: 2026-08-29
+- Status: accepted
+- Context: ChatWise exposes two distinct Accessibility defects in its message composer. After the
+  first hard line break, a caret at the document end is reported one UTF-16 unit early, leaving the
+  final character in `afterCursor` and forcing an otherwise append-only completion into the unsafe
+  mid-line path. On a long line that wraps visually without a hard break, the range is accurate but
+  the derived caret rectangle remains on the wrong part of the final visual row.
+- Decision: For ChatWise only, snap a collapsed multiline range to the document end when it is
+  exactly one UTF-16 unit short. Separately, replace estimated geometry only when the corrected
+  context is append-only and the final logical line actually soft-wraps in the measured composer
+  width, using ChatWise's observed 16-point system font, seven-point horizontal inset, and 20-point
+  bottom-row caret. Preserve native geometry for first lines and short hard-wrapped lines.
+- Consequences: Second lines and later paragraphs remain append-only and render inline, while soft
+  wraps land beside the visible caret instead of over earlier text. Genuine mid-line ranges stay
+  unchanged and continue through the existing insertion-safety suppression; other apps and
+  ChatWise fields outside the composer geometry are unaffected.
