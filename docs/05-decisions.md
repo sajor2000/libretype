@@ -142,6 +142,7 @@ row here.**
 | 120 | Adapt beam work to visible-candidate certainty | generation/performance |
 | 121 | Batch correction candidates by token depth | generation/performance |
 | 122 | Refine bare detected-language tags with the user's regional variant | generation/correction |
+| 123 | Gate KeyType by the selected macOS input method | settings/app |
 
 ---
 
@@ -3728,3 +3729,20 @@ text. Both are now closed:
   installed dictionary; resolution falls back to `"en"` as before). Non-English languages with
   regional prefs (e.g. `fr-CA`) gain the same refinement. The resolver is a pure function covered
   by deterministic app-target tests.
+
+## ADR-123 — Gate KeyType by the selected macOS input method
+
+- Date: 2026-08-29
+- Status: accepted
+- Context: Third-party input methods can own composition and keyboard-event behavior that conflicts
+  with KeyType's global context tracking, correction, completion, and acceptance pipeline. Per-app
+  compatibility cannot distinguish which input method is active in the same target app.
+- Decision: Track enabled, selectable macOS keyboard input sources with Text Input Source Services,
+  persist a deny-list keyed by each source's stable identifier, and default identifiers absent from
+  that list to enabled. Observe selected/enabled-source distributed notifications. When the selected
+  source is disabled, pause the entire typing pipeline; on a source or current-source policy change,
+  clear stale UI before re-evaluating and resuming the pipeline.
+- Consequences: Users can disable KeyType for incompatible input methods such as Chiboard without
+  losing it under standard layouts or other methods. Keyboard layouts and selectable input modes
+  appear alongside third-party input methods because those are the actual mutually exclusive source
+  choices reported by macOS. The loaded model stays resident, so re-enabling does not pay reload cost.

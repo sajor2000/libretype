@@ -25,6 +25,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Drives the "drag KeyType into the System Settings list" guided permission flow.
     let permissionGuidance: PermissionGuidanceController
     let settings: SettingsStore
+    /// Tracks the selected macOS keyboard input source and applies the user's per-method gate.
+    let inputMethods: InputMethodController
     /// Owns model download + ACPF profile generation; shared by the onboarding wizard and Settings.
     let modelSetup = ModelSetupCoordinator()
     /// Owns the Sparkle updater (in-app updates via the signed appcast). See `UpdaterController`.
@@ -75,6 +77,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.tracker = tracker
         let settings = SettingsStore()
         self.settings = settings
+        let inputMethods = InputMethodController(settings: settings)
+        self.inputMethods = inputMethods
         let history = KeyTypeModuleGraph.makeWritingHistory()
         let telemetry = CompletionTelemetryStore()
         self.history = history
@@ -130,6 +134,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         acceptance.completionController = completion
         acceptance.correctionController = correction
         acceptance.settings = settings
+        inputMethods.onSelectedInputMethodPolicyChange = { [weak self] in
+            self?.restartPipelineForInputMethodChange()
+        }
         // When a model finishes setup (GGUF + ACPF both present), make it the selected model and
         // reload the engine so the change takes effect without a relaunch.
         modelSetup.onModelReady = { [weak self] filename in
@@ -174,6 +181,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
 
         AppBundleWebAppClassifier.shared.primeRunningApplications()
+        inputMethods.start()
         developerOverrides.setEnabled(settings.developerOverrideTuningEnabled)
         permissions.startMonitoring()
         syncContextCaptureWithPermission()
@@ -248,7 +256,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func syncContextCaptureWithPermission() {
         // Don't resurrect the AX pipeline while an open panel is up — see `isPresentingOpenPanel`.
         guard !isPresentingOpenPanel else { return }
-        if permissions.accessibility.isGranted {
+        let inputMethodEnabled = inputMethods.isKeyTypeEnabledForSelectedInputMethod
+        if permissions.accessibility.isGranted, inputMethodEnabled {
             contextCapture.start()
             correction.start()
             completion.start()
@@ -264,11 +273,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // OCR screen capture has its own opt-in switch and permission on top of Accessibility. Polled
         // here (1 Hz) so flipping the Settings toggle or granting Screen Recording takes effect within
         // ~1 s without a relaunch. See ADR-040.
-        if permissions.accessibility.isGranted, settings.ocrEnabled, permissions.screenRecording.isGranted {
+        if permissions.accessibility.isGranted,
+           inputMethodEnabled,
+           settings.ocrEnabled,
+           permissions.screenRecording.isGranted {
             screenContext.start()
         } else {
             screenContext.stop()
         }
+    }
+
+    /// Input-source switches can happen without an AX text snapshot. Restart the lightweight
+    /// listeners so any visible completion/correction is cleared immediately, then let the shared
+    /// permission/input-method gate decide whether the pipeline should resume.
+    private func restartPipelineForInputMethodChange() {
+        completion.stop()
+        correction.stop()
+        historyRecorder.stop()
+        acceptance.stop()
+        screenContext.stop()
+        syncContextCaptureWithPermission()
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {

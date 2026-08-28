@@ -13,6 +13,7 @@ import SwiftUI
 
 struct SettingsView: View {
     let settings: SettingsStore
+    let inputMethods: InputMethodController
     let telemetry: CompletionTelemetryStore
     let modelSetup: ModelSetupCoordinator
     let contextCapture: ContextCaptureController
@@ -70,6 +71,8 @@ struct SettingsView: View {
             PrivacySettingsView(settings: settings, permissions: permissions, clearPersonalData: clearPersonalData)
         case .apps:
             AppsSettingsView(settings: settings, addApp: addApp)
+        case .inputMethods:
+            InputMethodsSettingsView(inputMethods: inputMethods)
         case .statistics:
             StatisticsSettingsView(
                 telemetry: telemetry,
@@ -100,6 +103,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
     case shortcuts
     case privacy
     case apps
+    case inputMethods
     case statistics
     case developer
     case setup
@@ -113,6 +117,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .shortcuts: return "Shortcuts"
         case .privacy: return "Privacy"
         case .apps: return "Apps"
+        case .inputMethods: return "Input Methods"
         case .statistics: return "Statistics"
         case .developer: return "Developer"
         case .setup: return "Setup"
@@ -126,6 +131,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .shortcuts: return "command"
         case .privacy: return "lock.shield.fill"
         case .apps: return "square.grid.2x2.fill"
+        case .inputMethods: return "keyboard"
         case .statistics: return "chart.bar.fill"
         case .developer: return "hammer.fill"
         case .setup: return "wand.and.stars"
@@ -139,6 +145,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
         case .shortcuts: return .indigo
         case .privacy: return .green
         case .apps: return .orange
+        case .inputMethods: return .cyan
         case .statistics: return .teal
         case .developer: return .pink
         case .setup: return .blue

@@ -2,11 +2,11 @@
 //  SettingsStore.swift
 //  KeyType
 //
-//  User-facing settings backed by UserDefaults: model selection, completion length, per-app
-//  toggles, and the privacy switches that gate sensitive context (writing history, clipboard,
-//  screen/OCR). History/clipboard default to ON for fresh installs, while OCR remains OFF because
-//  it requires Screen Recording. The pipeline (CompletionController / WritingHistoryRecorder /
-//  AppCompatibility wiring) reads these; SettingsView writes them. See ADR-023/107.
+//  User-facing settings backed by UserDefaults: model selection, completion length, per-app and
+//  per-input-method toggles, and the privacy switches that gate sensitive context (writing history,
+//  clipboard, screen/OCR). History/clipboard default to ON for fresh installs, while OCR remains
+//  OFF because it requires Screen Recording. The pipeline reads these; SettingsView writes them.
+//  See ADR-023/107/122.
 //
 
 import AutocompleteCore
@@ -113,6 +113,7 @@ final class SettingsStore {
         static let selectedModelFilename = "KeyType.settings.selectedModelFilename"
         static let perAppDisabled = "KeyType.settings.perAppDisabledBundleIDs"
         static let manualPerAppDisplayNames = "KeyType.settings.manualPerAppDisplayNames"
+        static let perInputMethodDisabled = "KeyType.settings.perInputMethodDisabledIdentifiers"
         static let acceptWordKeyCode = "KeyType.settings.acceptWordKeyCode"
         static let acceptWordModifiers = "KeyType.settings.acceptWordModifiers"
         static let acceptWordLabel = "KeyType.settings.acceptWordLabel"
@@ -178,6 +179,12 @@ final class SettingsStore {
         didSet { defaults.set(manualPerAppDisplayNames, forKey: Key.manualPerAppDisplayNames) }
     }
 
+    /// Stable macOS Text Input Source identifiers for which the user has disabled KeyType.
+    /// An identifier absent from this deny-list is enabled, including newly installed methods.
+    var perInputMethodDisabled: Set<String> {
+        didSet { defaults.set(Array(perInputMethodDisabled).sorted(), forKey: Key.perInputMethodDisabled) }
+    }
+
     /// Hotkey that accepts the next word of the visible suggestion. Defaults to Tab.
     var acceptWordShortcut: AcceptanceShortcut {
         didSet { persist(acceptWordShortcut, keyCode: Key.acceptWordKeyCode, modifiers: Key.acceptWordModifiers, label: Key.acceptWordLabel) }
@@ -218,6 +225,7 @@ final class SettingsStore {
         self.perAppDisabled = Set(defaults.stringArray(forKey: Key.perAppDisabled) ?? [])
         self.manualPerAppDisplayNames =
             defaults.dictionary(forKey: Key.manualPerAppDisplayNames) as? [String: String] ?? [:]
+        self.perInputMethodDisabled = Set(defaults.stringArray(forKey: Key.perInputMethodDisabled) ?? [])
         self.acceptWordShortcut = Self.loadShortcut(
             defaults: defaults,
             keyCodeKey: Key.acceptWordKeyCode,
@@ -291,6 +299,18 @@ final class SettingsStore {
 
     func isAppEnabled(_ bundleIdentifier: String) -> Bool {
         !perAppDisabled.contains(bundleIdentifier)
+    }
+
+    func setInputMethod(_ identifier: String, enabled: Bool) {
+        if enabled {
+            perInputMethodDisabled.remove(identifier)
+        } else {
+            perInputMethodDisabled.insert(identifier)
+        }
+    }
+
+    func isInputMethodEnabled(_ identifier: String) -> Bool {
+        !perInputMethodDisabled.contains(identifier)
     }
 
     func promptCustomInstructions(

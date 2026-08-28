@@ -346,6 +346,57 @@ struct KeyTypeTests {
         #expect(!reloaded.isAppEnabled("com.example.MenuBar"))
     }
 
+    @Test @MainActor func inputMethodsDefaultOnAndPersistExplicitDisable() {
+        let (defaults, suiteName) = Self.temporaryDefaults()
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let identifier = "com.chiboard.inputmethod.Chiboard"
+        let store = SettingsStore(defaults: defaults)
+        #expect(store.isInputMethodEnabled(identifier))
+
+        store.setInputMethod(identifier, enabled: false)
+        let reloaded = SettingsStore(defaults: defaults)
+
+        #expect(!reloaded.isInputMethodEnabled(identifier))
+        reloaded.setInputMethod(identifier, enabled: true)
+        #expect(SettingsStore(defaults: defaults).isInputMethodEnabled(identifier))
+    }
+
+    @Test @MainActor func selectedInputMethodControlsKeyTypeAvailability() {
+        let (defaults, suiteName) = Self.temporaryDefaults()
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let abc = ActiveInputMethod(identifier: "com.apple.keylayout.ABC", name: "ABC")
+        let chiboard = ActiveInputMethod(
+            identifier: "com.chiboard.inputmethod.Chiboard",
+            name: "Chiboard"
+        )
+        let provider = TestActiveInputMethodProvider(
+            snapshot: ActiveInputMethodSnapshot(
+                inputMethods: [abc, chiboard],
+                selectedIdentifier: abc.identifier
+            )
+        )
+        let settings = SettingsStore(defaults: defaults)
+        let controller = InputMethodController(settings: settings, provider: provider)
+        var policyChangeCount = 0
+        controller.onSelectedInputMethodPolicyChange = { policyChangeCount += 1 }
+
+        #expect(controller.isKeyTypeEnabledForSelectedInputMethod)
+        controller.setEnabled(false, for: chiboard)
+        #expect(policyChangeCount == 0)
+
+        provider.currentSnapshot.selectedIdentifier = chiboard.identifier
+        controller.refresh()
+
+        #expect(!controller.isKeyTypeEnabledForSelectedInputMethod)
+        #expect(policyChangeCount == 1)
+
+        controller.setEnabled(true, for: chiboard)
+        #expect(controller.isKeyTypeEnabledForSelectedInputMethod)
+        #expect(policyChangeCount == 2)
+    }
+
     @Test @MainActor func freshPrivacyDefaultsEnableHistoryAndClipboardOnly() {
         let (defaults, suiteName) = Self.temporaryDefaults()
         defer { defaults.removePersistentDomain(forName: suiteName) }
@@ -1008,5 +1059,18 @@ struct KeyTypeTests {
         #expect(history.minimumEntriesPerKind == 15)
         #expect(history.rollbackEntryCount == 15)
         #expect(history.appendEntryCount == 135)
+    }
+}
+
+@MainActor
+private final class TestActiveInputMethodProvider: ActiveInputMethodProviding {
+    var currentSnapshot: ActiveInputMethodSnapshot
+
+    init(snapshot: ActiveInputMethodSnapshot) {
+        self.currentSnapshot = snapshot
+    }
+
+    func snapshot() -> ActiveInputMethodSnapshot {
+        currentSnapshot
     }
 }

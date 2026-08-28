@@ -43,6 +43,7 @@ struct KeyTypeApp: App {
         Window("KeyType Settings", id: AppDelegate.settingsWindowID) {
             SettingsView(
                 settings: appDelegate.settings,
+                inputMethods: appDelegate.inputMethods,
                 telemetry: appDelegate.telemetry,
                 modelSetup: appDelegate.modelSetup,
                 contextCapture: appDelegate.contextCapture,
