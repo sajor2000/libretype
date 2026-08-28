@@ -88,10 +88,6 @@ public extension AppCompatibilityStore {
                 environmentContextDisabled: true
             ),
             TargetOverride(
-                bundleIdentifier: "com.apple.TextEdit",
-                verticalAlignmentOffset: { _ in 6 }
-            ),
-            TargetOverride(
                 bundleIdentifier: "com.apple.Safari",
                 fontSizeAdjustmentFactor: 0.98,
                 verticalAlignmentOffset: { _ in 28 }
