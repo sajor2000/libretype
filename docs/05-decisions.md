@@ -3765,3 +3765,21 @@ text. Both are now closed:
   registering fonts system-wide, and updates or nonstandard Word install locations continue to work
   because the running bundle supplies the path. Other apps retain their reported PostScript font
   whenever it agrees with the family, while missing bundled fonts degrade to the prior behavior.
+
+## ADR-125 — Scope Xcode Find repair to its composite search controls
+
+- Date: 2026-08-29
+- Status: accepted
+- Context: Xcode's source editor exposes accurate caret geometry and font metrics, but its Find and
+  Replace rows expose the enclosing composite search field as the caret origin. The query begins
+  after a 93-point icon/menu prefix, while the reported 18-point caret height corresponds to
+  11-point text and makes KeyType's no-font fallback render too large. A bundle-wide adjustment
+  would regress the already-correct source editor.
+- Decision: Repair only compact Xcode `AXSearchField` controls wide enough to be the editor's
+  Find/Replace rows. Estimate the caret x-position from the composite prefix and the 11-point query
+  width, center it vertically in the control, and apply the matching font-size factor only when the
+  captured context identifies Xcode's `Find` or `Replace` field. Leave all other Xcode contexts on
+  their native geometry and compatibility policy.
+- Consequences: Find and Replace ghost text begins at the actual query caret with the query's font,
+  while first lines, later lines, blank paragraphs, and soft wraps in the source editor remain
+  unchanged. Narrow Xcode search controls are ignored rather than receiving a speculative offset.

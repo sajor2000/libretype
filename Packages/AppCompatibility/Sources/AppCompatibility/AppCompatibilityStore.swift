@@ -90,6 +90,13 @@ public struct AppCompatibilityStore {
     public func policy(for context: TextFieldContext) -> CompletionPolicy {
         var policy = policy(for: context.target)
 
+        if isXcodeFindField(context) {
+            // Xcode's compact Find/Replace controls expose an 18-point AX caret for 11-point
+            // text. Keep the source editor's correctly resolved font untouched and compensate
+            // only for these composite search fields.
+            policy.fontSizeAdjustmentFactor *= 0.86
+        }
+
         if isBrowserChromeField(context) {
             applyBrowserChromeExclusion(to: &policy)
         }
@@ -106,6 +113,16 @@ public struct AppCompatibilityStore {
         }
 
         return policy
+    }
+
+    private func isXcodeFindField(_ context: TextFieldContext) -> Bool {
+        guard context.target.bundleIdentifier == "com.apple.dt.Xcode",
+              context.placeholder == "Text",
+              context.labels.contains(where: { $0 == "Find" || $0 == "Replace" }),
+              let field = context.geometry.fieldRect else {
+            return false
+        }
+        return (18...32).contains(field.height) && field.width >= 400
     }
 
     private func applyBrowserChromeExclusion(to policy: inout CompletionPolicy) {

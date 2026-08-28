@@ -47,6 +47,7 @@ public struct FocusedFieldReader {
         MailSingleLineCaretGeometryFallback.self,
         OutlookCaretGeometryFallback.self,
         WordSearchCaretGeometryFallback.self,
+        XcodeFindCaretGeometryFallback.self,
         MessagesRichPreviewCaretGeometryFallback.self,
         CodeEditorCaretGeometryFallback.self
     ]

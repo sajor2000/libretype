@@ -251,6 +251,49 @@ final class AppCompatibilityTests: XCTestCase {
         XCTAssertEqual(safariPolicy.fontSizeAdjustmentFactor, 0.98, accuracy: 0.001)
     }
 
+    func testXcodeFindFieldMatchesCompactQueryFontWithoutAffectingSourceEditor() {
+        let target = AppTarget(bundleIdentifier: "com.apple.dt.Xcode", appName: "Xcode")
+        let findContext = TextFieldContext(
+            beforeCursor: "Xcode find alignment",
+            geometry: TextFieldGeometry(
+                cursorRect: CGRect(x: 267, y: 818, width: 2, height: 18),
+                fieldRect: CGRect(x: 63, y: 817, width: 674, height: 22),
+                cursorRectQuality: .estimated
+            ),
+            target: target,
+            placeholder: "Text",
+            labels: ["Find"]
+        )
+        let sourceContext = TextFieldContext(
+            beforeCursor: "// source editor",
+            geometry: TextFieldGeometry(
+                cursorRect: CGRect(x: 300, y: 700, width: 2, height: 18),
+                fieldRect: CGRect(x: 63, y: 80, width: 674, height: 700),
+                cursorRectQuality: .exact
+            ),
+            target: target,
+            labels: ["Source Editor"]
+        )
+        var replaceContext = findContext
+        replaceContext.labels = ["Replace"]
+
+        XCTAssertEqual(
+            AppCompatibilityStore().policy(for: findContext).fontSizeAdjustmentFactor,
+            0.86,
+            accuracy: 0.001
+        )
+        XCTAssertEqual(
+            AppCompatibilityStore().policy(for: replaceContext).fontSizeAdjustmentFactor,
+            0.86,
+            accuracy: 0.001
+        )
+        XCTAssertEqual(
+            AppCompatibilityStore().policy(for: sourceContext).fontSizeAdjustmentFactor,
+            1,
+            accuracy: 0.001
+        )
+    }
+
     func testChromeGoogleDocsKeepsDomainPolicyWithBrowserVerticalNudge() {
         let target = AppTarget(
             bundleIdentifier: "com.google.Chrome",
