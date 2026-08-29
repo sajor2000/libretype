@@ -3818,3 +3818,24 @@ text. Both are now closed:
 - Consequences: ChatGPT first lines, hard line breaks, blank paragraphs, and soft wraps all use the
   same native AX baseline as the visible caret. Other Safari web editors retain their established
   adjustment, and Chrome's separate ChatGPT font tuning is unchanged.
+
+## ADR-128 — Prefer MarkEdit's character bounds after hard line breaks
+
+- Date: 2026-08-29
+- Status: accepted
+- Context: MarkEdit's CodeMirror Accessibility bridge reports an accurate zero-length
+  `AXBoundsForRange` caret on the first logical line and after a soft wrap, but reports stale x and
+  y coordinates after a hard line break. The error grows on later paragraphs, so a fixed overlay
+  offset cannot repair it. Nonzero bounds for the character immediately before the caret remain
+  tied to the rendered glyph.
+- Decision: For append-only MarkEdit contexts containing a hard line break, derive the caret from
+  the previous character's one-unit `AXBoundsForRange` rectangle. Convert it relative to the
+  already-resolved zero-length rectangle so the repair preserves display scale and coordinate
+  origin without assuming either. When the current line is still empty and therefore has no glyph
+  rectangle, suppress the overlay until the first character is typed. Reject implausible or
+  out-of-field character rectangles and preserve MarkEdit's native exact geometry for first lines
+  and soft-wrap-only documents.
+- Consequences: Later lines and paragraphs inherit MarkEdit's actual font, line height, zoom, and
+  Markdown styling instead of accumulating a guessed offset. Other apps and single-line MarkEdit
+  documents are unchanged; if the nonzero character range is unavailable or unsafe, KeyType keeps
+  the existing geometry rather than applying a speculative repair.
