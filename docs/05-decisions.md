@@ -3897,3 +3897,25 @@ text. Both are now closed:
 - Consequences: Editor ghost text matches the native monospace width and stays within one Retina
   pixel of the baseline across tested rows; Find retains its proportional font and receives only
   the shared baseline correction. Other JetBrains apps and non-Android Studio fields are unchanged.
+
+## ADR-132 — Join model work before releasing Metal resources
+
+- Date: 2026-08-29
+- Status: accepted
+- Context: A confirmed Quit crashed in llama.cpp's process-global Metal destructor while freeing a
+  residency set. The crash report showed a startup warmup concurrently blocked in
+  `MTLCommandBuffer.waitUntilCompleted()`. KeyType canceled warmup/generation on shutdown but did
+  not await those tasks, and model load/reload tasks were unowned, so cancellation-resistant work
+  could outlive engine teardown or publish a newly loaded engine after shutdown had already looked
+  at the controller's engine property.
+- Decision: Retain every completion and correction model task until it actually returns, and make
+  reload/termination cancel and join those registries before freeing the engine. Track load and
+  reload tasks explicitly; invalidate them with a lifecycle revision; dispose any engine returned
+  by a stale or canceled load instead of publishing it. Once Quit is confirmed, synchronously stop
+  every event source that can enqueue model work, reject pipeline restarts, and keep repeated Quit
+  requests in the existing `terminateLater` barrier until both correction and completion drains
+  finish.
+- Consequences: Quit and model reload may wait for an already-submitted Metal command buffer, but
+  native context/model destruction cannot overlap live generation, warmup, correction validation,
+  or late construction. Superseded canceled tasks remain retained only until their operation
+  returns, after which the registry removes them.

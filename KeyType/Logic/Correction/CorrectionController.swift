@@ -22,7 +22,9 @@ final class CorrectionController {
     private let log = Logger(subsystem: "com.pattonium.KeyType", category: "correction")
 
     private var listenerToken: UUID?
-    private var detectionTask: Task<Void, Never>?
+    private let detectionTasks = CompletionTaskRegistry()
+    private var detectionTask: CompletionTaskRegistry.Handle?
+    private var isShuttingDown = false
     private var lastContextKey: String?
     private var dismissedWordKey: String?
     private(set) var visibleCorrection: CorrectionCandidate?
@@ -60,7 +62,7 @@ final class CorrectionController {
     }
 
     func start() {
-        guard listenerToken == nil else { return }
+        guard !isShuttingDown, listenerToken == nil else { return }
         listenerToken = tracker.addListener { [weak self] snapshot in
             self?.handle(snapshot)
         }
@@ -74,6 +76,16 @@ final class CorrectionController {
         detectionTask?.cancel()
         detectionTask = nil
         clear()
+    }
+
+    /// Stop accepting snapshots and join every superseded detection task. A detection may be inside
+    /// model validation even after cancellation, so completion's llama runtime must not be freed
+    /// until this drain returns.
+    func shutdown() async {
+        guard !isShuttingDown else { return }
+        isShuttingDown = true
+        stop()
+        await detectionTasks.closeAndWait()
     }
 
     func shouldSuppressCompletion(for context: TextFieldContext) -> Bool {
@@ -127,6 +139,7 @@ final class CorrectionController {
     }
 
     private func handle(_ snapshot: FocusedFieldSnapshot?) {
+        guard !isShuttingDown else { return }
         guard let snapshot else {
             clear()
             return
@@ -148,7 +161,7 @@ final class CorrectionController {
         lastContextKey = key
 
         detectionTask?.cancel()
-        detectionTask = Task { [weak self] in
+        detectionTask = detectionTasks.start { [weak self] in
             guard let self else { return }
             let started = DispatchTime.now()
             do {
