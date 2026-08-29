@@ -2,6 +2,26 @@ import AutocompleteCore
 
 public typealias VerticalAlignmentOffsetResolver = (Double) -> Double
 
+public enum OverlayFontDesign: Equatable, Sendable {
+    case monospaced
+}
+
+/// A conservative typeface fallback for fields that do not expose AX font attributes. The size
+/// factor is applied only when the fallback is actually used, so a future app version that starts
+/// publishing its native font is not rescaled.
+public struct OverlayFontFallback: Equatable, Sendable {
+    public var design: OverlayFontDesign
+    public var sizeAdjustmentFactor: Double
+
+    public init(
+        design: OverlayFontDesign,
+        sizeAdjustmentFactor: Double = 1
+    ) {
+        self.design = design
+        self.sizeAdjustmentFactor = sizeAdjustmentFactor
+    }
+}
+
 public struct CompletionPolicy: Equatable {
     public var isCompletionEnabled: Bool
     public var allowsMidLineCompletion: Bool
@@ -14,6 +34,7 @@ public struct CompletionPolicy: Equatable {
     public var fontSizeAdjustmentFactor: Double
     public var horizontalAlignmentOffset: Double
     public var verticalAlignmentOffset: VerticalAlignmentOffsetResolver
+    public var overlayFontFallback: OverlayFontFallback?
     public var overlayPreference: OverlayPreference
     public var completionMode: CompletionMode
     public var customInstructions: [String]
@@ -35,6 +56,7 @@ public struct CompletionPolicy: Equatable {
         fontSizeAdjustmentFactor: Double = 1,
         horizontalAlignmentOffset: Double = 0,
         verticalAlignmentOffset: @escaping VerticalAlignmentOffsetResolver = { _ in 0 },
+        overlayFontFallback: OverlayFontFallback? = nil,
         overlayPreference: OverlayPreference = .inline,
         completionMode: CompletionMode = .prose,
         customInstructions: [String] = [],
@@ -53,6 +75,7 @@ public struct CompletionPolicy: Equatable {
         self.fontSizeAdjustmentFactor = fontSizeAdjustmentFactor
         self.horizontalAlignmentOffset = horizontalAlignmentOffset
         self.verticalAlignmentOffset = verticalAlignmentOffset
+        self.overlayFontFallback = overlayFontFallback
         self.overlayPreference = overlayPreference
         self.completionMode = completionMode
         self.customInstructions = customInstructions
@@ -75,6 +98,7 @@ public struct CompletionPolicy: Equatable {
             && lhs.verticalAlignmentOffset(0) == rhs.verticalAlignmentOffset(0)
             && lhs.verticalAlignmentOffset(12) == rhs.verticalAlignmentOffset(12)
             && lhs.verticalAlignmentOffset(24) == rhs.verticalAlignmentOffset(24)
+            && lhs.overlayFontFallback == rhs.overlayFontFallback
             && lhs.overlayPreference == rhs.overlayPreference
             && lhs.completionMode == rhs.completionMode
             && lhs.customInstructions == rhs.customInstructions

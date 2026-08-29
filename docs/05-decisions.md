@@ -3878,3 +3878,22 @@ text. Both are now closed:
   and the floating Find control matches its UI text without overlapping its controls. Other iWork
   apps and all non-Pages fields retain their existing placement. Pages continues to use its
   accurate field width, so ghost words wrap on the same visual row as inserted text.
+
+## ADR-131 — Give Android Studio editors a scoped monospaced font fallback
+
+- Date: 2026-08-29
+- Status: accepted
+- Context: Android Studio exposes exact editor caret and viewport geometry through Accessibility,
+  but its editor omits AX font attributes. KeyType therefore rendered the ghost in its proportional
+  UI fallback, making the same word roughly nineteen percent narrower than Android Studio's native
+  monospaced text. The fallback baseline was also three to four points high on the first line, hard
+  continuation lines, and later paragraphs. Android Studio's compact Find field has the same
+  baseline bias but correctly uses a proportional UI font.
+- Decision: Add an Android Studio compatibility offset of three points downward. When its focused
+  field is a tall editor viewport and no AX font was resolved, use the system monospaced fallback at
+  a width-matching 0.87 size factor. Do not apply that fallback to compact controls, and ignore it
+  automatically if a future Android Studio version begins publishing a native AX font. Exclude
+  environment metadata from this code editor's prompt as with the other supported code editors.
+- Consequences: Editor ghost text matches the native monospace width and stays within one Retina
+  pixel of the baseline across tested rows; Find retains its proportional font and receives only
+  the shared baseline correction. Other JetBrains apps and non-Android Studio fields are unchanged.

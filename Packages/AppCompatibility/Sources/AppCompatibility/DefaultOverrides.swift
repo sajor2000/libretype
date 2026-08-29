@@ -76,6 +76,11 @@ public extension AppCompatibilityStore {
                 environmentContextDisabled: true
             ),
             TargetOverride(
+                bundleIdentifier: "com.google.android.studio",
+                verticalAlignmentOffset: { _ in 3 },
+                environmentContextDisabled: true
+            ),
+            TargetOverride(
                 bundleIdentifier: "com.todesktop.230313mzl4w4u92",
                 environmentContextDisabled: true
             ),

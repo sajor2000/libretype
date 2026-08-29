@@ -6,6 +6,7 @@
 //
 
 import AutocompleteCore
+import AppCompatibility
 import AppKit
 import CompletionUI
 import MacContextCapture
@@ -615,6 +616,58 @@ struct KeyTypeTests {
         #expect(effective.font?.pointSize == font.pointSize)
         #expect(effective.font?.familyName == font.familyName)
         #expect(effective.color == .labelColor)
+    }
+
+    @Test func missingAXFontCanUseCompatibilityMonospacedFallback() {
+        let style = ResolvedFieldStyle(color: .labelColor)
+        let context = TextFieldContext(
+            beforeCursor: "Android Studio editor alignment",
+            target: AppTarget(
+                bundleIdentifier: "com.google.android.studio",
+                appName: "Android Studio"
+            )
+        )
+        let fallback = OverlayFontFallback(
+            design: .monospaced,
+            sizeAdjustmentFactor: 0.87
+        )
+
+        let effective = CompletionController.effectiveOverlayStyle(
+            style,
+            for: context,
+            fontFallback: fallback
+        )
+        let expected = NSFont.monospacedSystemFont(
+            ofSize: NSFont.systemFontSize,
+            weight: .regular
+        )
+
+        #expect(effective.font?.familyName == expected.familyName)
+        #expect(effective.color == .labelColor)
+    }
+
+    @Test func compatibilityFontFallbackDoesNotReplaceResolvedAXFont() {
+        let font = NSFont.systemFont(ofSize: 17)
+        let style = ResolvedFieldStyle(font: font, color: .labelColor)
+        let context = TextFieldContext(
+            beforeCursor: "Android Studio editor alignment",
+            target: AppTarget(
+                bundleIdentifier: "com.google.android.studio",
+                appName: "Android Studio"
+            )
+        )
+
+        let effective = CompletionController.effectiveOverlayStyle(
+            style,
+            for: context,
+            fontFallback: OverlayFontFallback(
+                design: .monospaced,
+                sizeAdjustmentFactor: 0.87
+            )
+        )
+
+        #expect(effective.font?.fontName == font.fontName)
+        #expect(effective.font?.pointSize == font.pointSize)
     }
 
     @Test func screenshotCalibrationOffsetAppliesSignedOverlayCorrection() {

@@ -108,6 +108,16 @@ public struct AppCompatibilityStore {
             }
         }
 
+        if isAndroidStudioEditor(context) {
+            // JetBrains editors expose reliable caret geometry but no AX font attributes. Use a
+            // width-matched monospaced fallback only for the tall editor viewport; compact Find
+            // controls use Android Studio's proportional UI font and keep the ordinary fallback.
+            policy.overlayFontFallback = OverlayFontFallback(
+                design: .monospaced,
+                sizeAdjustmentFactor: 0.87
+            )
+        }
+
         if isBrowserChromeField(context) {
             applyBrowserChromeExclusion(to: &policy)
         }
@@ -143,6 +153,17 @@ public struct AppCompatibilityStore {
             return false
         }
         return (18...32).contains(field.height) && field.width >= 200
+    }
+
+    private func isAndroidStudioEditor(_ context: TextFieldContext) -> Bool {
+        guard context.target.bundleIdentifier == "com.google.android.studio",
+              !context.traits.isWebField,
+              let field = context.geometry.fieldRect,
+              let cursor = context.geometry.cursorRect,
+              cursor.height > 0 else {
+            return false
+        }
+        return field.height >= max(80, cursor.height * 4)
     }
 
     private func applyBrowserChromeExclusion(to policy: inout CompletionPolicy) {

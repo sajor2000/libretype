@@ -150,6 +150,48 @@ final class AppCompatibilityTests: XCTestCase {
         XCTAssertEqual(policy.verticalAlignmentOffset(15), -1, accuracy: 0.001)
     }
 
+    func testAndroidStudioEditorUsesMonospacedFallbackAndLowerBaseline() {
+        let context = TextFieldContext(
+            beforeCursor: "Android Studio editor alignment",
+            geometry: TextFieldGeometry(
+                cursorRect: CGRect(x: 880, y: 845, width: 2, height: 18),
+                fieldRect: CGRect(x: 600, y: 117, width: 823, height: 746),
+                cursorRectQuality: .exact
+            ),
+            target: AppTarget(
+                bundleIdentifier: "com.google.android.studio",
+                appName: "Android Studio"
+            )
+        )
+
+        let policy = AppCompatibilityStore().policy(for: context)
+
+        XCTAssertEqual(policy.verticalAlignmentOffset(18), 3, accuracy: 0.001)
+        XCTAssertEqual(policy.overlayFontFallback?.design, .monospaced)
+        XCTAssertEqual(policy.overlayFontFallback?.sizeAdjustmentFactor ?? 0, 0.87, accuracy: 0.001)
+        XCTAssertFalse(policy.includesEnvironmentContext)
+    }
+
+    func testAndroidStudioFindKeepsProportionalFallback() {
+        let context = TextFieldContext(
+            beforeCursor: "alignment",
+            geometry: TextFieldGeometry(
+                cursorRect: CGRect(x: 700, y: 838, width: 2, height: 17),
+                fieldRect: CGRect(x: 630, y: 836, width: 156, height: 22),
+                cursorRectQuality: .exact
+            ),
+            target: AppTarget(
+                bundleIdentifier: "com.google.android.studio",
+                appName: "Android Studio"
+            )
+        )
+
+        let policy = AppCompatibilityStore().policy(for: context)
+
+        XCTAssertEqual(policy.verticalAlignmentOffset(17), 3, accuracy: 0.001)
+        XCTAssertNil(policy.overlayFontFallback)
+    }
+
     func testSafariLowersInlineGhostText() {
         assertInlineGhostTextOffset(
             bundleIdentifier: "com.apple.Safari",

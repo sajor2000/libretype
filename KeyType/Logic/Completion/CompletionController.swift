@@ -1250,7 +1250,17 @@ final class CompletionController {
             placement.presentation = .capsule
         }
         let candidate = CompletionCandidate(text: shown, mode: .prose)
-        let effectiveStyle = Self.effectiveOverlayStyle(style, for: live)
+        let policy = compatibilityStore.policy(for: live)
+        let effectiveStyle = Self.effectiveOverlayStyle(
+            style,
+            for: live,
+            fontFallback: policy.overlayFontFallback
+        )
+        if style.font == nil,
+           effectiveStyle.font != nil,
+           let fontFallback = policy.overlayFontFallback {
+            placement.fontSizeAdjustmentFactor *= fontFallback.sizeAdjustmentFactor
+        }
         lastRenderedStyle = effectiveStyle
         let calibrated = calibratedOverlayInputs(
             style: effectiveStyle,
@@ -1698,10 +1708,23 @@ final class CompletionController {
 
     nonisolated static func effectiveOverlayStyle(
         _ style: ResolvedFieldStyle,
-        for context: TextFieldContext
+        for context: TextFieldContext,
+        fontFallback: OverlayFontFallback? = nil
     ) -> ResolvedFieldStyle {
-        guard context.target.bundleIdentifier == "md.obsidian" else { return style }
-        return ResolvedFieldStyle(font: nil, color: style.color)
+        var result = style
+        if context.target.bundleIdentifier == "md.obsidian" {
+            result = ResolvedFieldStyle(font: nil, color: style.color)
+        }
+
+        guard result.font == nil, let fontFallback else { return result }
+        switch fontFallback.design {
+        case .monospaced:
+            result.font = NSFont.monospacedSystemFont(
+                ofSize: NSFont.systemFontSize,
+                weight: .regular
+            )
+        }
+        return result
     }
 
     nonisolated static func textMirrorContext(
