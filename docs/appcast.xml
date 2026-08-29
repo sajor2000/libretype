@@ -3,6 +3,15 @@
     <channel>
         <title>KeyType</title>
         <item>
+            <title>1.8</title>
+            <pubDate>Sat, 29 Aug 2026 14:19:38 +0800</pubDate>
+            <sparkle:version>11</sparkle:version>
+            <sparkle:shortVersionString>1.8</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description><![CDATA[<h2>New Features</h2><p>No new features in this release.</p><h2>Bug Fixes</h2><ul><li>safely drain model tasks before shutdown</li><li>Android Studio ghost text font and vertical alignment</li><li>Pages ghost text baseline and find alignment</li><li>Visual Studio Code ghost text editor placement</li><li>MarkEdit ghost text multiline alignment</li><li>Safari ghost text ChatGPT paragraph alignment</li><li>ChatWise ghost text multiline and soft wrap alignment</li><li>Xcode ghost text find and replace alignment</li><li>Microsoft Word ghost text font and find alignment</li><li>Microsoft Outlook ghost text field and body alignment</li><li>Mail ghost text search and subject alignment</li><li>Chrome ghost text address bar suppression</li><li>ChatGPT ghost text font sizing</li><li>TextEdit ghost text vertical alignment</li></ul>]]></description>
+            <enclosure url="https://github.com/johnbean393/KeyType/releases/download/v1.8.0/KeyType.1.8.dmg" sparkle:edSignature="l/IiTE04UMGsm71bVNfmdoSexecuVh7OAysi/uaWVY7XXfLld/OPn6KKRc9e63FjwCuqwV8BUnnCGlK8qGbOAw==" length="15132464" type="application/octet-stream"/>
+        </item>
+        <item>
             <title>1.7</title>
             <pubDate>Sat, 29 Aug 2026 01:32:56 +0800</pubDate>
             <sparkle:version>10</sparkle:version>
