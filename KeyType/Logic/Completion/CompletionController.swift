@@ -26,6 +26,53 @@ import TextInsertion
 import TokenProfiles
 import os
 
+/// Retains model-using tasks until they have actually returned. Cancellation alone is not a
+/// teardown barrier: a task can be suspended in a non-cancellation-aware Metal command-buffer wait
+/// and keep using llama.cpp after its caller has moved on. Keeping every superseded task here lets
+/// reload/quit cancel *and join* all of them before native model resources are freed.
+@MainActor
+final class CompletionTaskRegistry {
+    struct Handle {
+        fileprivate let task: Task<Void, Never>
+
+        func cancel() {
+            task.cancel()
+        }
+    }
+
+    private var tasks: [UUID: Task<Void, Never>] = [:]
+    private(set) var isClosed = false
+
+    var activeTaskCount: Int {
+        tasks.count
+    }
+
+    @discardableResult
+    func start(_ operation: @escaping @MainActor () async -> Void) -> Handle? {
+        guard !isClosed else { return nil }
+        let id = UUID()
+        let task = Task { @MainActor [weak self] in
+            await operation()
+            self?.tasks.removeValue(forKey: id)
+        }
+        tasks[id] = task
+        return Handle(task: task)
+    }
+
+    func cancelAllAndWait() async {
+        let pending = Array(tasks.values)
+        pending.forEach { $0.cancel() }
+        for task in pending {
+            await task.value
+        }
+    }
+
+    func closeAndWait() async {
+        isClosed = true
+        await cancelAllAndWait()
+    }
+}
+
 enum CompletionTextMutation: Equatable {
     case inserted(String)
     case deleteBackward
@@ -234,14 +281,24 @@ final class CompletionController {
     private let inserter: PasteboardCompletionInserter
     private let filter: DefaultCandidateFilter
     private let frontmostBundleIdentifier: () -> String?
+    private let engineBuilder: (
+        AppCompatibilityStore,
+        String,
+        ThresholdAdjustments
+    ) async throws -> ConstrainedGenerationEngine
     private let predictionLog = PredictionLog()
     private let fullPromptLog = FullPromptLog()
     private let log = Logger(subsystem: "com.pattonium.KeyType", category: "completion")
 
     private var engine: ConstrainedGenerationEngine?
-    private var generationTask: Task<Void, Never>?
+    private let inferenceTasks = CompletionTaskRegistry()
+    private var generationTask: CompletionTaskRegistry.Handle?
     private var debounceTask: Task<Void, Error>?
-    private var warmupTask: Task<Void, Never>?
+    private var warmupTask: CompletionTaskRegistry.Handle?
+    private var loadTask: Task<Void, Never>?
+    private var reloadTask: Task<Void, Never>?
+    private var lifecycleRevision: UInt64 = 0
+    private var isShuttingDown = false
     private var overlayCalibrationTask: Task<Void, Never>?
     private var overlayCalibrationInFlightKey: String?
     private var overlayCalibrationCache: [String: ScreenshotCalibrationResult] = [:]
@@ -360,7 +417,12 @@ final class CompletionController {
         overlayCalibrator: ScreenshotOverlayCalibrator = ScreenshotOverlayCalibrator(),
         frontmostBundleIdentifier: @escaping () -> String? = {
             NSWorkspace.shared.frontmostApplication?.bundleIdentifier
-        }
+        },
+        engineBuilder: ((
+            AppCompatibilityStore,
+            String,
+            ThresholdAdjustments
+        ) async throws -> ConstrainedGenerationEngine)? = nil
     ) {
         self.tracker = tracker
         self.settings = settings
@@ -372,6 +434,13 @@ final class CompletionController {
         self.placementResolver = OverlayPlacementResolver(compatibilityStore: compatibilityStore)
         self.overlayCalibrator = overlayCalibrator
         self.frontmostBundleIdentifier = frontmostBundleIdentifier
+        self.engineBuilder = engineBuilder ?? { compatibilityStore, modelFilename, adjustments in
+            try await Self.buildEngine(
+                compatibilityStore: compatibilityStore,
+                modelFilename: modelFilename,
+                adjustments: adjustments
+            )
+        }
         self.inserter = PasteboardCompletionInserter(
             planner: InsertionPlanner(compatibilityStore: compatibilityStore)
         )
@@ -390,25 +459,48 @@ final class CompletionController {
 
     /// Load the model + profile + engine once, off the main actor. Safe to call repeatedly.
     func loadIfNeeded() {
-        guard loadState == .idle else { return }
+        guard !isShuttingDown, loadState == .idle else { return }
         loadState = .loading
         // Tune the decoder from accumulated local telemetry (bounded nudges) and honor the chosen
         // model. Both are read now, on the main actor, before suspending into the off-main load.
         let adjustments = ThresholdTuner.adjustments(for: telemetry.snapshot())
         let modelFilename = settings.selectedModelFilename ?? ModelContainer.defaultModelFilename
+        let revision = lifecycleRevision
+        let engineBuilder = self.engineBuilder
+        let compatibilityStore = self.compatibilityStore
         activeModelFilename = modelFilename
-        Task {
+        loadTask = Task { [weak self] in
             do {
-                let engine = try await Self.buildEngine(
-                    compatibilityStore: compatibilityStore,
-                    modelFilename: modelFilename,
-                    adjustments: adjustments
+                let loadedEngine = try await engineBuilder(
+                    compatibilityStore,
+                    modelFilename,
+                    adjustments
                 )
-                self.engine = engine
+                guard let self else {
+                    await loadedEngine.shutdown()
+                    return
+                }
+                guard !Task.isCancelled,
+                      !self.isShuttingDown,
+                      self.lifecycleRevision == revision,
+                      self.activeModelFilename == modelFilename else {
+                    // A model load can finish after cancellation because llama/Metal setup is not
+                    // cancellation-aware. Never publish that late engine; dispose it in this task
+                    // so shutdown can join the task and know its GPU resources are gone.
+                    await loadedEngine.shutdown()
+                    return
+                }
+                self.engine = loadedEngine
                 self.loadState = .ready
-                self.startStartupWarmup(engine: engine)
+                self.startStartupWarmup(engine: loadedEngine)
                 self.log.info("Completion engine ready")
             } catch {
+                guard let self,
+                      !Task.isCancelled,
+                      !self.isShuttingDown,
+                      self.lifecycleRevision == revision else {
+                    return
+                }
                 self.loadState = .unavailable("\(error)")
                 self.log.error("Completion engine unavailable: \(error, privacy: .public)")
             }
@@ -421,21 +513,58 @@ final class CompletionController {
     /// (the post-download auto-select reloads *and* fires the picker's `onChange`) don't kick off two
     /// concurrent engine builds.
     func reloadModel() {
+        guard !isShuttingDown else { return }
         let target = settings.selectedModelFilename ?? ModelContainer.defaultModelFilename
         guard target != activeModelFilename || loadState == .idle else { return }
+        lifecycleRevision &+= 1
+        let revision = lifecycleRevision
         activeModelFilename = target
+        // Gate snapshots synchronously while the async drain is pending, so no new generation can
+        // enter the registry between cancellation and engine teardown.
+        loadState = .loading
         reset()
         lastGenerationLatencyMs = nil
-        Task {
-            if let engine { await engine.shutdown() }
-            engine = nil
-            loadState = .idle
-            loadIfNeeded()
+        let pendingLoad = loadTask
+        pendingLoad?.cancel()
+        let previousReload = reloadTask
+        previousReload?.cancel()
+        reloadTask = Task { [weak self] in
+            await previousReload?.value
+            await pendingLoad?.value
+            guard let self,
+                  !Task.isCancelled,
+                  !self.isShuttingDown,
+                  self.lifecycleRevision == revision else {
+                return
+            }
+
+            await self.inferenceTasks.cancelAllAndWait()
+            guard !Task.isCancelled,
+                  !self.isShuttingDown,
+                  self.lifecycleRevision == revision else {
+                return
+            }
+
+            // Transfer ownership before suspending so correction validation cannot acquire this
+            // engine while it is being freed. Already-running engine work is serialized by the
+            // runtime actor and the inference registry has been fully joined above.
+            let engineToShutdown = self.engine
+            self.engine = nil
+            if let engineToShutdown {
+                await engineToShutdown.shutdown()
+            }
+            guard !Task.isCancelled,
+                  !self.isShuttingDown,
+                  self.lifecycleRevision == revision else {
+                return
+            }
+            self.loadState = .idle
+            self.loadIfNeeded()
         }
     }
 
     func start() {
-        guard !isRunning else { return }
+        guard !isShuttingDown, !isRunning else { return }
         isRunning = true
         loadIfNeeded()
         listenerToken = tracker.addListener { [weak self] snapshot in
@@ -459,20 +588,39 @@ final class CompletionController {
     /// Release the model/GPU resources before the app exits. Must complete before the process
     /// terminates: llama.cpp's ggml-metal backend asserts (and aborts) during its process-teardown
     /// destructors if the context/model — and thus the GPU residency sets — were never freed. We
-    /// stop the pipeline, cancel any in-flight generation, then free the engine's native resources
-    /// and drop our reference so its `deinit` can't race the same teardown. See ADR-021.
+    /// stop the pipeline, cancel and join every in-flight generation/load, then free the engine's
+    /// native resources and drop our reference so its `deinit` can't race the same teardown. See
+    /// ADR-021 and ADR-132.
     func shutdown() async {
+        guard !isShuttingDown else { return }
+        isShuttingDown = true
+        lifecycleRevision &+= 1
         stop()
-        warmupTask?.cancel()
+        reset()
+        let pendingLoad = loadTask
+        let pendingReload = reloadTask
+        pendingLoad?.cancel()
+        pendingReload?.cancel()
         overlayCalibrationTask?.cancel()
         overlayCalibrationTask = nil
         lastGenerationLatencyMs = nil
         loadState = .idle
         activeModelFilename = nil
-        if let engine {
-            await engine.shutdown()
-        }
+        let engineToShutdown = engine
         engine = nil
+
+        // `cancel()` is only a request. A canceled warmup can still be blocked in
+        // MTLCommandBuffer.waitUntilCompleted(), and a canceled load can still return a newly
+        // allocated llama context. Join both classes of work before freeing the active engine or
+        // allowing AppKit to call exit().
+        await inferenceTasks.closeAndWait()
+        await pendingReload?.value
+        await pendingLoad?.value
+        if let engineToShutdown {
+            await engineToShutdown.shutdown()
+        }
+        loadTask = nil
+        reloadTask = nil
     }
 
     // MARK: - Pipeline
@@ -675,7 +823,7 @@ final class CompletionController {
             latencyTrace.eventDebounceElapsed()
         }
         debounceTask = debounceGate
-        generationTask = Task { [weak self] in
+        generationTask = inferenceTasks.start { [weak self] in
             guard let self else { return }
             do {
                 latencyTrace.eventGenerationBegin()
@@ -698,6 +846,9 @@ final class CompletionController {
                 self.log.error("Generation failed: \(error, privacy: .public)")
                 self.finishLatencyTrace(latencyTrace, outcome: "generation-error")
             }
+        }
+        if generationTask == nil {
+            debounceGate.cancel()
         }
     }
 
@@ -741,7 +892,7 @@ final class CompletionController {
         target: CorrectionTarget,
         context: TextFieldContext
     ) async throws -> [CorrectionCandidate] {
-        guard let engine else { return [] }
+        guard !isShuttingDown, loadState == .ready, let engine else { return [] }
         let prior = candidates.lazy.compactMap {
             self.reuseHistory.priorPredictedReplacement(
                 prefixBeforeWord: target.prefixBeforeWord,
@@ -1153,7 +1304,6 @@ final class CompletionController {
     }
 
     private func startStartupWarmup(engine: ConstrainedGenerationEngine) {
-        warmupTask?.cancel()
         let context = TextFieldContext(
             beforeCursor: "The",
             target: AppTarget(bundleIdentifier: "com.pattonium.KeyType", appName: "KeyType"),
@@ -1175,8 +1325,9 @@ final class CompletionController {
     }
 
     private func startWarmup(engine: ConstrainedGenerationEngine, request: CompletionRequest) {
+        guard !isShuttingDown else { return }
         warmupTask?.cancel()
-        warmupTask = Task { [weak self] in
+        warmupTask = inferenceTasks.start { [weak self] in
             do {
                 try Task.checkCancellation()
                 try await engine.warmUp(for: request)

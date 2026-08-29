@@ -210,6 +210,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func pollDeveloperProbeTriggerFile() {
+        guard !isTerminating else { return }
         guard settings.developerOverrideTuningEnabled else { return }
         let url = Self.developerProbeTriggerURL
         guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
@@ -255,7 +256,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func syncContextCaptureWithPermission() {
         // Don't resurrect the AX pipeline while an open panel is up — see `isPresentingOpenPanel`.
-        guard !isPresentingOpenPanel else { return }
+        guard !isTerminating, !isPresentingOpenPanel else { return }
         let inputMethodEnabled = inputMethods.isKeyTypeEnabledForSelectedInputMethod
         if permissions.accessibility.isGranted, inputMethodEnabled {
             contextCapture.start()
@@ -287,12 +288,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// listeners so any visible completion/correction is cleared immediately, then let the shared
     /// permission/input-method gate decide whether the pipeline should resume.
     private func restartPipelineForInputMethodChange() {
+        guard !isTerminating else { return }
         completion.stop()
         correction.stop()
         historyRecorder.stop()
         acceptance.stop()
         screenContext.stop()
         syncContextCaptureWithPermission()
+    }
+
+    /// Synchronously stop every source that can enqueue completion or correction work. The async
+    /// task drain starts immediately afterwards; keeping this phase synchronous closes the window in
+    /// which a permission timer or input-source notification could restart the pipeline.
+    private func quiescePipelineForTermination() {
+        permissionSyncTimer?.invalidate()
+        permissionSyncTimer = nil
+        developerProbePollTimer?.invalidate()
+        developerProbePollTimer = nil
+        inputMethods.stop()
+        permissions.stopMonitoring()
+        acceptance.stop()
+        correction.stop()
+        completion.stop()
+        historyRecorder.stop()
+        screenContext.stop()
+        contextCapture.stop()
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
@@ -324,9 +344,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// exiting. The teardown is mandatory, not just polite: llama.cpp's ggml-metal backend aborts in
     /// its process-exit C++ destructors unless the llama context/model were freed first (the GPU
     /// residency-set assert in the crash report). We free them asynchronously, then let termination
-    /// proceed via `reply(toApplicationShouldTerminate:)`. See ADR-021.
+    /// proceed via `reply(toApplicationShouldTerminate:)`. See ADR-021 and ADR-132.
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        if isTerminating { return .terminateNow }
+        // A second quit request must stay behind the same asynchronous drain. Returning
+        // `.terminateNow` here used to let AppKit call exit() while Metal work was still live.
+        if isTerminating { return .terminateLater }
 
         // The agent has no dock icon, so bring the alert to the front explicitly.
         NSApp.activate(ignoringOtherApps: true)
@@ -342,7 +364,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         isTerminating = true
+        quiescePipelineForTermination()
         Task { @MainActor in
+            // Correction validation calls into the same model runtime, so drain it before the
+            // completion controller transfers and frees engine ownership.
+            await correction.shutdown()
             await completion.shutdown()
             NSApp.reply(toApplicationShouldTerminate: true)
         }

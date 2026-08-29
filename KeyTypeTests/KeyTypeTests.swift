@@ -8,10 +8,58 @@
 import AutocompleteCore
 import AppCompatibility
 import AppKit
+import ConstrainedGeneration
 import CompletionUI
 import MacContextCapture
+import ModelRuntime
 import Testing
+import TokenProfiles
 @testable import KeyType
+
+private actor AsyncTestGate {
+    private var isOpen = false
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+
+    func wait() async {
+        guard !isOpen else { return }
+        await withCheckedContinuation { continuation in
+            waiters.append(continuation)
+        }
+    }
+
+    func open() {
+        guard !isOpen else { return }
+        isOpen = true
+        let pending = waiters
+        waiters.removeAll()
+        pending.forEach { $0.resume() }
+    }
+
+    func hasOpened() -> Bool {
+        isOpen
+    }
+}
+
+private actor ShutdownTrackingRuntime: LocalModelRuntime {
+    nonisolated let metadata = ModelMetadata(
+        identifier: "shutdown-tracking",
+        family: "stub",
+        vocabularySize: 256,
+        contextLength: 4096
+    )
+    nonisolated let tokenizer: ModelTokenizing = UTF8FallbackTokenizer()
+    private var shutdownCallCount = 0
+
+    func prepare(promptTokens: [TokenID]) async throws {}
+    func logitsForNextToken() async throws -> [TokenLogit] { [] }
+    func decodeNext(tokenID: TokenID) async throws {}
+    func resetKVCache() async {}
+    func shutdown() async { shutdownCallCount += 1 }
+
+    func observedShutdownCallCount() -> Int {
+        shutdownCallCount
+    }
+}
 
 struct KeyTypeTests {
     private static let target = AppTarget(bundleIdentifier: "com.test.app", appName: "Test")
@@ -76,6 +124,89 @@ struct KeyTypeTests {
 
     @Test func adaptiveDebounceStartsAtModerateDelayBeforeTelemetry() {
         #expect(CompletionController.adaptiveDebounceNanoseconds(lastGenerationLatencyMs: nil) == 25_000_000)
+    }
+
+    @Test @MainActor func taskRegistryRetainsCancelledWorkUntilDrainCompletes() async {
+        let registry = CompletionTaskRegistry()
+        let started = AsyncTestGate()
+        let cancellationObserved = AsyncTestGate()
+        let release = AsyncTestGate()
+        let drainFinished = AsyncTestGate()
+
+        let handle = registry.start {
+            await started.open()
+            while !Task.isCancelled {
+                await Task.yield()
+            }
+            await cancellationObserved.open()
+            // Deliberately ignore cancellation, like a Metal command-buffer wait does.
+            await release.wait()
+        }
+
+        await started.wait()
+        handle?.cancel()
+        await cancellationObserved.wait()
+        #expect(registry.activeTaskCount == 1)
+
+        let drain = Task { @MainActor in
+            await registry.closeAndWait()
+            await drainFinished.open()
+        }
+        await Task.yield()
+        #expect(!(await drainFinished.hasOpened()))
+
+        await release.open()
+        await drain.value
+        #expect(await drainFinished.hasOpened())
+        #expect(registry.activeTaskCount == 0)
+        #expect(registry.isClosed)
+        #expect(registry.start {} == nil)
+    }
+
+    @Test @MainActor func shutdownWaitsForLateModelLoadAndDisposesItsEngine() async {
+        let (defaults, suiteName) = Self.temporaryDefaults()
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let builderStarted = AsyncTestGate()
+        let cancellationObserved = AsyncTestGate()
+        let allowBuilderToReturn = AsyncTestGate()
+        let shutdownFinished = AsyncTestGate()
+        let runtime = ShutdownTrackingRuntime()
+        let loadedEngine = ConstrainedGenerationEngine(
+            runtime: runtime,
+            profile: InMemoryAutocompleteProfile(vocabularySize: 256)
+        )
+        let controller = CompletionController(
+            tracker: AccessibilityContextTracker(),
+            settings: SettingsStore(defaults: defaults),
+            engineBuilder: { _, _, _ in
+                await builderStarted.open()
+                while !Task.isCancelled {
+                    await Task.yield()
+                }
+                await cancellationObserved.open()
+                // Model construction is intentionally cancellation-resistant in this regression
+                // test, matching llama.cpp initialization already underway on another executor.
+                await allowBuilderToReturn.wait()
+                return loadedEngine
+            }
+        )
+
+        controller.loadIfNeeded()
+        await builderStarted.wait()
+        let shutdown = Task { @MainActor in
+            await controller.shutdown()
+            await shutdownFinished.open()
+        }
+
+        await cancellationObserved.wait()
+        #expect(!(await shutdownFinished.hasOpened()))
+        await allowBuilderToReturn.open()
+        await shutdown.value
+
+        #expect(await shutdownFinished.hasOpened())
+        #expect(await runtime.observedShutdownCallCount() == 1)
+        #expect(controller.loadState == .idle)
     }
 
     @Test func midLineBudgetUsesTwoVisibleTokensPlusLookahead() {
