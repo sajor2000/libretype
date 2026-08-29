@@ -143,6 +143,7 @@ row here.**
 | 121 | Batch correction candidates by token depth | generation/performance |
 | 122 | Refine bare detected-language tags with the user's regional variant | generation/correction |
 | 123 | Gate KeyType by the selected macOS input method | settings/app |
+| 133 | Run Vision OCR off-main behind a fail-open single-flight gate | context-capture/ui |
 
 ---
 
@@ -3919,3 +3920,22 @@ text. Both are now closed:
   native context/model destruction cannot overlap live generation, warmup, correction validation,
   or late construction. Superseded canceled tasks remain retained only until their operation
   returns, after which the registry removes them.
+
+## ADR-133 — Run Vision OCR off-main behind a fail-open single-flight gate
+
+- Date: 2026-08-29
+- Status: accepted
+- Context: A full-window `VNRecognizeTextRequest` became permanently stuck inside Apple's
+  `TextRecognition` framework. Screenshot overlay calibration then invoked the synchronous
+  `VNImageRequestHandler.perform` API from its `@MainActor` calibrator and waited behind the first
+  request, freezing KeyType's event loop. Canceling the surrounding Swift task did not interrupt
+  the native Vision call.
+- Decision: Route window-context OCR and screenshot calibration OCR through one shared recognizer.
+  Run the synchronous Vision request in a detached utility task, admit at most one native request
+  at a time, reject overlaps instead of queueing them, and race each call against cancellation and
+  an eight-second timeout. Forward cancellation and timeout to `VNRequest.cancel()`, but keep the
+  single-flight permit occupied until the native call actually returns.
+- Consequences: A wedged Vision request can leave OCR unavailable for the rest of that launch, but
+  it cannot block the main actor or accumulate periodic capture work. Screen context and visual
+  calibration fail open while ordinary completion, settings, and quit handling remain responsive.
+  The two OCR features intentionally trade occasional suppression for process-wide liveness.

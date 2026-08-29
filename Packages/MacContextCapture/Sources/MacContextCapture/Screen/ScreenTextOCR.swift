@@ -9,7 +9,6 @@
 
 import CoreGraphics
 import Foundation
-import Vision
 
 public enum ScreenTextOCR {
     /// Recognise text in `image`, returning the recognised lines in natural reading order
@@ -25,38 +24,18 @@ public enum ScreenTextOCR {
     /// reports a per-candidate confidence, and a low value is the signal of a mangled recognition.
     /// Feeding nothing is better than feeding garbage, so low-confidence lines are dropped here.
     public static func recognizeLines(in image: CGImage, minimumConfidence: Float = 0.4) async throws -> [String] {
-        try await withCheckedThrowingContinuation { continuation in
-            let request = VNRecognizeTextRequest { request, error in
-                if let error {
-                    continuation.resume(throwing: error)
-                    return
+        try await VisionTextRecognizer.recognize(in: image, usesLanguageCorrection: true)
+            .sorted { lhs, rhs in
+                // Vision bounding boxes are normalised with a bottom-left origin (y up), so
+                // higher y is nearer the top of the window. Group roughly by line, then by x.
+                if abs(lhs.boundingBox.origin.y - rhs.boundingBox.origin.y) > 0.01 {
+                    return lhs.boundingBox.origin.y > rhs.boundingBox.origin.y
                 }
-                let observations = (request.results as? [VNRecognizedTextObservation] ?? [])
-                    .sorted { lhs, rhs in
-                        // Vision bounding boxes are normalised with a bottom-left origin (y up), so
-                        // higher y is nearer the top of the window. Group roughly by line, then by x.
-                        if abs(lhs.boundingBox.origin.y - rhs.boundingBox.origin.y) > 0.01 {
-                            return lhs.boundingBox.origin.y > rhs.boundingBox.origin.y
-                        }
-                        return lhs.boundingBox.origin.x < rhs.boundingBox.origin.x
-                    }
-                let lines = observations.compactMap { observation -> String? in
-                    guard let candidate = observation.topCandidates(1).first,
-                          candidate.confidence >= minimumConfidence else { return nil }
-                    return candidate.string
-                }
-                continuation.resume(returning: lines)
+                return lhs.boundingBox.origin.x < rhs.boundingBox.origin.x
             }
-            request.recognitionLevel = .accurate
-            request.usesLanguageCorrection = true
-
-            let handler = VNImageRequestHandler(cgImage: image, options: [:])
-            do {
-                try handler.perform([request])
-            } catch {
-                continuation.resume(throwing: error)
+            .compactMap { observation in
+                observation.confidence >= minimumConfidence ? observation.text : nil
             }
-        }
     }
 
     /// Drop OCR lines that look *corrupted* — independent of Vision's confidence — so mangled

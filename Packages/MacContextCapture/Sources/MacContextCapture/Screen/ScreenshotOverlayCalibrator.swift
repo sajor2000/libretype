@@ -13,7 +13,6 @@ import CoreGraphics
 import Darwin
 import Foundation
 import ScreenCaptureKit
-import Vision
 
 public struct ScreenshotCalibrationResult: Equatable {
     public var detectedFontSize: CGFloat
@@ -99,10 +98,10 @@ public final class ScreenshotOverlayCalibrator {
             maxHeight: maxCropHeight
         )
         let screenshot = try await capture(region: crop, windowID: snapshot.windowID)
-        let observations = (try? await recognizeText(in: screenshot)) ?? []
-        let recognizedText = observations
-            .compactMap { $0.topCandidates(1).first?.string }
-            .first
+        let recognizedText = try? await VisionTextRecognizer.recognize(
+            in: screenshot,
+            usesLanguageCorrection: false
+        ).first?.text
         let actualLineLength = recognizedText?.count ?? prefix.count
 
         let sizes = ScreenshotCalibrationScorer.candidateSizes(around: font.pointSize)
@@ -185,25 +184,6 @@ public final class ScreenshotOverlayCalibrator {
             throw ScreenshotCalibrationError.captureFailed
         }
         return image
-    }
-
-    private func recognizeText(in image: CGImage) async throws -> [VNRecognizedTextObservation] {
-        try await withCheckedThrowingContinuation { continuation in
-            let request = VNRecognizeTextRequest { request, error in
-                if let error {
-                    continuation.resume(throwing: error)
-                    return
-                }
-                continuation.resume(returning: request.results as? [VNRecognizedTextObservation] ?? [])
-            }
-            request.recognitionLevel = .accurate
-            request.usesLanguageCorrection = false
-            do {
-                try VNImageRequestHandler(cgImage: image, options: [:]).perform([request])
-            } catch {
-                continuation.resume(throwing: error)
-            }
-        }
     }
 
     private static func displayID(for screen: NSScreen) -> CGDirectDisplayID? {
