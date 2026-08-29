@@ -3859,3 +3859,22 @@ text. Both are now closed:
   false trailing boundary, while caret repair can still use the current line's origin and height.
   Search fields retain real overflow protection, full-editor Accessibility implementations keep
   wrapping against their usable bounds, and unrelated apps are unchanged.
+
+## ADR-130 — Raise Pages inline ghost text by one point
+
+- Date: 2026-08-29
+- Status: accepted
+- Context: Pages exposes accurate caret and document bounds, and KeyType's inferred Helvetica Neue
+  size matches the rendered document text. SwiftUI's inline text baseline nevertheless lands one
+  AppKit point below Pages' native baseline at 125% zoom. The same displacement appears on the
+  first line, a hard continuation line, a later paragraph, and a soft-wrapped visual row. Pages'
+  floating Find control separately exposes an 18-point caret for smaller UI text, leaving its
+  unadjusted ghost text both oversized and roughly four points below the native baseline.
+- Decision: Add a Pages-only compatibility offset of negative one point for ordinary fields. For
+  the compact Find field identified by its placeholder and geometry, apply a 0.93 font factor and
+  three additional points of upward correction. Keep both adjustments in `AppCompatibility` so
+  caret capture, document wrapping, and insertion behavior remain unchanged.
+- Consequences: Pages ghost text shares the native baseline across the tested document positions,
+  and the floating Find control matches its UI text without overlapping its controls. Other iWork
+  apps and all non-Pages fields retain their existing placement. Pages continues to use its
+  accurate field width, so ghost words wrap on the same visual row as inserted text.

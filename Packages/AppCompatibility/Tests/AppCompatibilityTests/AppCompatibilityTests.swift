@@ -107,6 +107,49 @@ final class AppCompatibilityTests: XCTestCase {
         )
     }
 
+    func testPagesRaisesInlineGhostTextByOnePoint() {
+        assertInlineGhostTextOffset(
+            bundleIdentifier: "com.apple.iWork.Pages",
+            appName: "Pages",
+            expectedOffset: -1
+        )
+    }
+
+    func testPagesFindFieldUsesCompactControlFontAndBaseline() {
+        let context = TextFieldContext(
+            beforeCursor: "Pages find",
+            geometry: TextFieldGeometry(
+                cursorRect: CGRect(x: 642, y: 492, width: 2, height: 18),
+                fieldRect: CGRect(x: 570, y: 492, width: 353, height: 24),
+                cursorRectQuality: .exact
+            ),
+            target: AppTarget(bundleIdentifier: "com.apple.iWork.Pages", appName: "Pages"),
+            placeholder: "Find"
+        )
+
+        let policy = AppCompatibilityStore().policy(for: context)
+
+        XCTAssertEqual(policy.fontSizeAdjustmentFactor, 0.93, accuracy: 0.001)
+        XCTAssertEqual(policy.verticalAlignmentOffset(18), -4, accuracy: 0.001)
+    }
+
+    func testPagesBodyDoesNotUseCompactFindFontAdjustment() {
+        let context = TextFieldContext(
+            beforeCursor: "Pages body alignment",
+            geometry: TextFieldGeometry(
+                cursorRect: CGRect(x: 478, y: 746, width: 2, height: 15),
+                fieldRect: CGRect(x: 324, y: -49, width: 585, height: 810),
+                cursorRectQuality: .exact
+            ),
+            target: AppTarget(bundleIdentifier: "com.apple.iWork.Pages", appName: "Pages")
+        )
+
+        let policy = AppCompatibilityStore().policy(for: context)
+
+        XCTAssertEqual(policy.fontSizeAdjustmentFactor, 1, accuracy: 0.001)
+        XCTAssertEqual(policy.verticalAlignmentOffset(15), -1, accuracy: 0.001)
+    }
+
     func testSafariLowersInlineGhostText() {
         assertInlineGhostTextOffset(
             bundleIdentifier: "com.apple.Safari",

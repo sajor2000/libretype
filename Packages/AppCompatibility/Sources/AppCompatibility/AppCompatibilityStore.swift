@@ -97,6 +97,17 @@ public struct AppCompatibilityStore {
             policy.fontSizeAdjustmentFactor *= 0.86
         }
 
+        if isPagesFindField(context) {
+            // Pages' floating Find control exposes a taller caret than its UI font and needs a
+            // larger baseline correction than the document canvas. Keep both adjustments local
+            // to the compact search field so body text retains its accurate inferred size.
+            policy.fontSizeAdjustmentFactor *= 0.93
+            let currentVerticalAlignmentOffset = policy.verticalAlignmentOffset
+            policy.verticalAlignmentOffset = { lineHeight in
+                currentVerticalAlignmentOffset(lineHeight) - 3
+            }
+        }
+
         if isBrowserChromeField(context) {
             applyBrowserChromeExclusion(to: &policy)
         }
@@ -123,6 +134,15 @@ public struct AppCompatibilityStore {
             return false
         }
         return (18...32).contains(field.height) && field.width >= 400
+    }
+
+    private func isPagesFindField(_ context: TextFieldContext) -> Bool {
+        guard context.target.bundleIdentifier == "com.apple.iWork.Pages",
+              context.placeholder == "Find",
+              let field = context.geometry.fieldRect else {
+            return false
+        }
+        return (18...32).contains(field.height) && field.width >= 200
     }
 
     private func applyBrowserChromeExclusion(to policy: inout CompletionPolicy) {

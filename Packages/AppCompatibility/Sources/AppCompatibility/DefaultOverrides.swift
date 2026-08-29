@@ -114,6 +114,10 @@ public extension AppCompatibilityStore {
                 overlayPreference: .hidden
             ),
             TargetOverride(
+                bundleIdentifier: "com.apple.iWork.Pages",
+                verticalAlignmentOffset: { _ in -1 }
+            ),
+            TargetOverride(
                 domain: "google.com",
                 matchesSubdomains: false,
                 verticalAlignmentOffset: { _ in -22 }
