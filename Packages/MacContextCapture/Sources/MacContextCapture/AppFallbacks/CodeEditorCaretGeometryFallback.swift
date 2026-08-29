@@ -11,6 +11,29 @@ enum CodeEditorCaretGeometryFallback: AppCaretGeometryFallback {
         "com.todesktop.230313mzl4w4u92"
     ]
 
+    /// In screen-reader mode, Electron code editors expose the focused `AXTextArea` as a
+    /// line-height frame whose width ends at the final glyph. That is useful for deriving caret
+    /// geometry, but it is not the editable viewport and must not be used to clip inline ghost
+    /// text. Compact controls can also identify as `AXTextArea`, so preserve a line-sized field
+    /// when its parent is line-sized too. Genuine full-editor frames stay intact as well.
+    static func overlayFieldRect(
+        target: AppTarget,
+        role: String?,
+        subrole: String?,
+        fieldRect: CGRect?,
+        parentRect: CGRect?
+    ) -> CGRect? {
+        guard bundleIdentifiers.contains(target.bundleIdentifier),
+              role == kAXTextAreaRole as String || subrole == kAXTextAreaRole as String,
+              let fieldRect,
+              fieldRect.height <= 44,
+              let parentRect,
+              parentRect.height > 44 else {
+            return fieldRect
+        }
+        return nil
+    }
+
     static func caretGeometry(
         target: AppTarget,
         beforeCursor: String,

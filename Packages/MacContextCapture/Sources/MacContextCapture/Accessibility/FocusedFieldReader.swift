@@ -137,6 +137,13 @@ public struct FocusedFieldReader {
         }
 
         let fieldRect = Self.fieldRect(for: textElement)
+        let overlayFieldRect = CodeEditorCaretGeometryFallback.overlayFieldRect(
+            target: target,
+            role: role,
+            subrole: subrole,
+            fieldRect: fieldRect,
+            parentRect: AXCaretHelper.parentElement(of: textElement).flatMap(Self.fieldRect)
+        )
         let windowFrame = AXWindowIDResolver.windowFrame(for: textElement)
         let windowID = AXWindowIDResolver.windowID(
             for: textElement,
@@ -156,7 +163,7 @@ public struct FocusedFieldReader {
         let language = LanguageDetector.detectLanguage(in: split.beforeCursor)
         let geometry = TextFieldGeometry(
             cursorRect: resolvedCaret.rect,
-            fieldRect: fieldRect,
+            fieldRect: overlayFieldRect,
             isAtEndOfLine: split.isAtEndOfLine,
             isRightToLeft: WritingDirection.isRightToLeft(split.beforeCursor.isEmpty ? rawValue : split.beforeCursor),
             cursorRectQuality: resolvedCaret.quality

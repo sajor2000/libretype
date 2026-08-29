@@ -3839,3 +3839,23 @@ text. Both are now closed:
   Markdown styling instead of accumulating a guessed offset. Other apps and single-line MarkEdit
   documents are unchanged; if the nonzero character range is unavailable or unsafe, KeyType keeps
   the existing geometry rather than applying a speculative repair.
+
+## ADR-129 — Do not treat Electron code-editor line runs as field boundaries
+
+- Date: 2026-08-29
+- Status: accepted
+- Context: In Visual Studio Code's screen-reader Accessibility tree, the focused editor is an
+  `AXTextArea` only one line high and only as wide as the current line's rendered text. Its trailing
+  edge therefore equals the caret on every line. KeyType treated that line-run rectangle as the
+  whole field, so the compact-field overflow guard hid every inline ghost even when the editor had
+  ample visible space. The same Electron geometry can occur in Cursor-family code editors.
+- Decision: Keep the line-run rectangle as the input to the existing code-editor caret repair, but
+  omit it from the final overlay geometry for known code-editor bundles when an `AXTextArea` frame
+  is at most 44 points high and its parent is a taller editor container. Preserve compact controls
+  whose text area and parent are both line-sized, as well as text-area frames tall enough to
+  represent a genuine editor viewport. If the parent frame is unavailable, retain the field bounds
+  so the overflow guard fails closed.
+- Consequences: VS Code and related Electron editors no longer suppress completions against a
+  false trailing boundary, while caret repair can still use the current line's origin and height.
+  Search fields retain real overflow protection, full-editor Accessibility implementations keep
+  wrapping against their usable bounds, and unrelated apps are unchanged.

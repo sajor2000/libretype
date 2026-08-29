@@ -4,6 +4,78 @@ import XCTest
 @testable import MacContextCapture
 
 final class CodeEditorCaretGeometryFallbackTests: XCTestCase {
+    func testDropsLineSizedVSCodeTextAreaFromOverlayClipping() {
+        let target = AppTarget(bundleIdentifier: "com.microsoft.VSCode", appName: "Code")
+        let lineFrame = CGRect(x: 270, y: 803, width: 203, height: 18)
+
+        XCTAssertNil(
+            CodeEditorCaretGeometryFallback.overlayFieldRect(
+                target: target,
+                role: "AXTextArea",
+                subrole: nil,
+                fieldRect: lineFrame,
+                parentRect: CGRect(x: 204, y: 120, width: 852, height: 708)
+            )
+        )
+    }
+
+    func testPreservesCompactCodeEditorControlsAndFullEditorFrames() {
+        let target = AppTarget(bundleIdentifier: "com.microsoft.VSCode", appName: "Code")
+        let compactSearch = CGRect(x: 300, y: 700, width: 260, height: 24)
+        let fullEditor = CGRect(x: 270, y: 120, width: 975, height: 680)
+
+        XCTAssertEqual(
+            CodeEditorCaretGeometryFallback.overlayFieldRect(
+                target: target,
+                role: "AXTextArea",
+                subrole: nil,
+                fieldRect: compactSearch,
+                parentRect: CGRect(x: 300, y: 700, width: 340, height: 24)
+            ),
+            compactSearch
+        )
+        XCTAssertEqual(
+            CodeEditorCaretGeometryFallback.overlayFieldRect(
+                target: target,
+                role: "AXTextArea",
+                subrole: nil,
+                fieldRect: fullEditor,
+                parentRect: CGRect(x: 250, y: 100, width: 1_000, height: 720)
+            ),
+            fullEditor
+        )
+    }
+
+    func testPreservesLineSizedTextAreaForOtherApps() {
+        let frame = CGRect(x: 270, y: 803, width: 203, height: 18)
+
+        XCTAssertEqual(
+            CodeEditorCaretGeometryFallback.overlayFieldRect(
+                target: AppTarget(bundleIdentifier: "com.example.other", appName: "Other"),
+                role: "AXTextArea",
+                subrole: nil,
+                fieldRect: frame,
+                parentRect: CGRect(x: 200, y: 100, width: 900, height: 700)
+            ),
+            frame
+        )
+    }
+
+    func testPreservesLineSizedCodeEditorTextAreaWhenParentFrameIsUnavailable() {
+        let frame = CGRect(x: 270, y: 803, width: 203, height: 18)
+
+        XCTAssertEqual(
+            CodeEditorCaretGeometryFallback.overlayFieldRect(
+                target: AppTarget(bundleIdentifier: "com.microsoft.VSCode", appName: "Code"),
+                role: "AXTextArea",
+                subrole: nil,
+                fieldRect: frame,
+                parentRect: nil
+            ),
+            frame
+        )
+    }
+
     func testVSCodeLineOriginCaretIsEstimatedFromCurrentLinePrefix() {
         let field = CGRect(x: 277, y: 802, width: 975, height: 27)
         let current = CapturedCaretGeometry(
