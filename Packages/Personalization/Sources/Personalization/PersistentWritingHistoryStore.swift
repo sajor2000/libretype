@@ -192,6 +192,26 @@ public final class PersistentWritingHistoryStore: WritingHistoryStoring, @unchec
         } catch {
             // Best-effort; the app also wipes the Keychain passphrase as a hard backstop.
         }
+        // Also remove the pre-rebrand orphan DB (ADR-135: no migrate into Libretype, but Clear All
+        // must still erase personal data left under Application Support/KeyType/). Co-installed
+        // upstream KeyType shares that path — clearing Libretype personal data clears it too.
+        Self.removeLegacyKeyTypeHistoryFileIfPresent()
+    }
+
+    private static func removeLegacyKeyTypeHistoryFileIfPresent() {
+        guard let support = try? FileManager.default.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: false
+        ) else {
+            return
+        }
+        let legacy = support
+            .appendingPathComponent("KeyType", isDirectory: true)
+            .appendingPathComponent("History", isDirectory: true)
+            .appendingPathComponent("history.sqlcipher", isDirectory: false)
+        try? FileManager.default.removeItem(at: legacy)
     }
 
     // MARK: - WritingHistoryProviding

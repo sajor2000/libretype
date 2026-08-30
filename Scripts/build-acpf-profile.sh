@@ -13,7 +13,7 @@
 set -euo pipefail
 
 FAMILY="${FAMILY:-qwen3-v151936}"
-DEFAULT_GGUF="$HOME/Library/Application Support/Libretype/Models/Qwen3.5-2B-Base-Q4_K_M.gguf"
+DEFAULT_GGUF="$HOME/Library/Application Support/Libretype/Models/Qwen3.5-2B-Base.i1-Q4_K_M.gguf"
 GGUF="${GGUF:-$DEFAULT_GGUF}"
 OUT="${OUT:-$HOME/Library/Application Support/Libretype/Models/${FAMILY}.acpf.bin}"
 

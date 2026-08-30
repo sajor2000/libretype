@@ -36,6 +36,14 @@ final class HostAppIdentityTests: XCTestCase {
             "com.apple.Pages",
             ownBundleIdentifier: "io.github.sajor2000.libretype"
         ))
+        XCTAssertFalse(HostAppIdentity.isSelfBundleIdentifier(
+            "io.github.sajor2000.libretypehelper",
+            ownBundleIdentifier: "io.github.sajor2000.libretype"
+        ))
+        XCTAssertFalse(HostAppIdentity.isSelfBundleIdentifier(
+            "com.pattonium.keytypehelper",
+            ownBundleIdentifier: "io.github.sajor2000.libretype"
+        ))
     }
 
     func testAppNameFallbackCoversProductAndDisplayNames() {

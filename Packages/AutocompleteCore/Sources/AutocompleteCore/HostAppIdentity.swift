@@ -22,10 +22,15 @@ public enum HostAppIdentity {
         if let own = ownBundleIdentifier?.lowercased(), normalized == own {
             return true
         }
-        if normalized.hasPrefix(libretypeBundleIDPrefix) {
+        if matchesBundleID(normalized, prefix: libretypeBundleIDPrefix) {
             return true
         }
-        return normalized.hasPrefix(legacyKeyTypeBundleIDPrefix)
+        return matchesBundleID(normalized, prefix: legacyKeyTypeBundleIDPrefix)
+    }
+
+    /// Exact match or a dot-separated child (`prefix.dev`), not `prefixhelper`.
+    private static func matchesBundleID(_ normalized: String, prefix: String) -> Bool {
+        normalized == prefix || normalized.hasPrefix(prefix + ".")
     }
 
     /// Full target check including the AX app-name fallback.

@@ -4,6 +4,9 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   build-and-test:
     name: Build and test packages
@@ -11,6 +14,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Select Xcode 16 (Swift 6 tools)
         run: |
@@ -33,7 +38,7 @@ jobs:
             echo "Missing binaryTarget in $manifest" >&2
             exit 1
           fi
-          if grep -E 'path:\s*"Vendor/llama\.xcframework"' "$manifest"; then
+          if grep -E 'path:[[:space:]]*"Vendor/llama\.xcframework"' "$manifest"; then
             echo "Committed Package.swift must not use local-path llama binding (ADR-134)" >&2
             exit 1
           fi
@@ -41,11 +46,11 @@ jobs:
             echo "Committed Package.swift must not pin ggml-org release CDN (ADR-007/ADR-134)" >&2
             exit 1
           fi
-          if ! grep -E 'url:\s*"https://github.com/sajor2000/libretype/releases/' "$manifest"; then
+          if ! grep -E 'url:[[:space:]]*"https://github.com/sajor2000/libretype/releases/' "$manifest"; then
             echo "Committed Package.swift must pin Libretype Releases mirror host" >&2
             exit 1
           fi
-          if ! grep -E 'checksum:\s*"[0-9a-f]{64}"' "$manifest"; then
+          if ! grep -E 'checksum:[[:space:]]*"[0-9a-f]{64}"' "$manifest"; then
             echo "Committed Package.swift must include a non-empty SHA256 checksum" >&2
             exit 1
           fi

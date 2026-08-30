@@ -27,6 +27,8 @@ EOF
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 bench_root="$(cd "$script_dir/.." && pwd)"
 repo_root="$(cd "$bench_root/.." && pwd)"
+# Relative --results-root is resolved against the caller's cwd (captured before any cd).
+caller_cwd="$(pwd)"
 results_root="$bench_root/Results"
 
 model_path=""
@@ -77,6 +79,11 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+# Absolute results_root so later `cd "$repo_root"` does not change where outputs land.
+if [[ "$results_root" != /* ]]; then
+  results_root="${caller_cwd%/}/$results_root"
+fi
 
 if [[ -z "$model_path" ]]; then
   echo "--model is required." >&2
