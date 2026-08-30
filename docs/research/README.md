@@ -15,3 +15,4 @@ Rules:
 | Note | Theme | Status |
 | --- | --- | --- |
 | `2026-08-30-fork-architecture-anchors.md` | Fork bootstrap, engine seam, remote API surface, port inventory | Active |
+| `2026-08-30-plan-review-evidence.md` | KD13 ASSUMPTIONs, co-install exclusion, mirror attestation, name scan | Active |
