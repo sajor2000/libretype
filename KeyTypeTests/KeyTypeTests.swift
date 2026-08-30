@@ -470,7 +470,13 @@ struct KeyTypeTests {
 
     @Test @MainActor func missingSnapshotPreservesTunableTargetOnlyForKeyTypeFocus() {
         #expect(ContextCaptureController.shouldPreserveLatestTunableSnapshotOnMissingSnapshot(
-            frontmostBundleIdentifier: "com.pattonium.KeyType.dev"
+            frontmostBundleIdentifier: "io.github.sajor2000.libretype.dev"
+        ))
+        #expect(ContextCaptureController.shouldPreserveLatestTunableSnapshotOnMissingSnapshot(
+            frontmostBundleIdentifier: "io.github.sajor2000.libretype"
+        ))
+        #expect(ContextCaptureController.shouldPreserveLatestTunableSnapshotOnMissingSnapshot(
+            frontmostBundleIdentifier: "com.pattonium.KeyType"
         ))
         #expect(!ContextCaptureController.shouldPreserveLatestTunableSnapshotOnMissingSnapshot(
             frontmostBundleIdentifier: "com.apple.Pages"
@@ -654,7 +660,19 @@ struct KeyTypeTests {
             settingsEnabled: true,
             hasVisibleCandidate: true,
             developerTuningHold: true,
-            frontmostBundleIdentifier: "com.pattonium.KeyType.dev"
+            frontmostBundleIdentifier: "io.github.sajor2000.libretype.dev"
+        ))
+        #expect(CompletionController.shouldPreserveDeveloperTuningOverlayForMissingSnapshot(
+            settingsEnabled: true,
+            hasVisibleCandidate: true,
+            developerTuningHold: true,
+            frontmostBundleIdentifier: "io.github.sajor2000.libretype"
+        ))
+        #expect(CompletionController.shouldPreserveDeveloperTuningOverlayForMissingSnapshot(
+            settingsEnabled: true,
+            hasVisibleCandidate: true,
+            developerTuningHold: true,
+            frontmostBundleIdentifier: "com.pattonium.KeyType"
         ))
         #expect(!CompletionController.shouldPreserveDeveloperTuningOverlayForMissingSnapshot(
             settingsEnabled: true,
@@ -666,7 +684,7 @@ struct KeyTypeTests {
             settingsEnabled: true,
             hasVisibleCandidate: true,
             developerTuningHold: false,
-            frontmostBundleIdentifier: "com.pattonium.KeyType.dev"
+            frontmostBundleIdentifier: "io.github.sajor2000.libretype.dev"
         ))
     }
 

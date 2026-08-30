@@ -21,8 +21,8 @@ enum KeyTypeModuleGraph {
         TextFieldContext(
             beforeCursor: "",
             target: AppTarget(
-                bundleIdentifier: "com.pattonium.KeyType",
-                appName: "KeyType"
+                bundleIdentifier: "io.github.sajor2000.libretype",
+                appName: "Libretype"
             )
         )
     }

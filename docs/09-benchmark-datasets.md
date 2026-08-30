@@ -33,6 +33,20 @@ Private calibration data is intentionally excluded by `.gitignore` under
 `KeyTypeBench-20260603/Private/`, `KeyTypeBench-20260603/Datasets/private/`, and
 `KeyTypeBench-20260603/Datasets/local/`.
 
+## Libretype baseline output path (U6)
+
+Libretype records S1 baselines under **`KeyTypeBench-20260607/Results/`** (gitignored; do not
+commit). The harness scripts still live under `KeyTypeBench-20260603/`; always pass
+`--results-root` so artifacts do not land in the default `KeyTypeBench-20260603/Results/` tree:
+
+```sh
+KeyTypeBench-20260603/Scripts/run_model_comparison.sh \
+  --results-root KeyTypeBench-20260607/Results \
+  --model "$HOME/Library/Application Support/Libretype/Models/<model>.gguf"
+```
+
+Use a **release** build for latency (SC3). Name aggregate folders with model, quant, and suite.
+
 ## Source Selection
 
 The main prose source is English Wikipedia through the Hugging Face Dataset Viewer API:
@@ -237,11 +251,14 @@ For comparison runs, use the wrapper so charts are refreshed after the model fin
 
 ```sh
 KeyTypeBench-20260603/Scripts/run_model_comparison.sh \
-  --model "$HOME/Library/Application Support/KeyType/Models/Qwen3.5-2B-Base.i1-Q4_K_M.gguf"
+  --model "$HOME/Library/Application Support/Libretype/Models/Qwen3.5-2B-Base.i1-Q4_K_M.gguf" \
+  --results-root KeyTypeBench-20260607/Results
 ```
 
 That runs `core` and `edge` on the `eval` split plus the `policy` suite, then regenerates
-`KeyTypeBench-20260603/Results/keytype-model-comparison/`. To rebuild graphs from existing
+artifacts under the `--results-root` directory (Libretype baseline: `KeyTypeBench-20260607/Results/`).
+Without `--results-root`, charts land in `KeyTypeBench-20260603/Results/` — do not
+use that path for Libretype S1 baselines. To rebuild graphs from existing
 aggregate files without running a model:
 
 ```sh

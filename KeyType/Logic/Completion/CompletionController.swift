@@ -1306,7 +1306,7 @@ final class CompletionController {
     private func startStartupWarmup(engine: ConstrainedGenerationEngine) {
         let context = TextFieldContext(
             beforeCursor: "The",
-            target: AppTarget(bundleIdentifier: "com.pattonium.KeyType", appName: "KeyType"),
+            target: AppTarget(bundleIdentifier: "io.github.sajor2000.libretype", appName: "Libretype"),
             detectedLanguage: "en"
         )
         let prompt = KeyTypeModuleGraph.makePromptBuilder().buildPrompt(context: context).prompt
@@ -1751,19 +1751,14 @@ final class CompletionController {
     }
 
     private static func isKeyTypeTarget(_ target: AppTarget) -> Bool {
-        if isKeyTypeBundleIdentifier(target.bundleIdentifier) {
-            return true
-        }
-        return target.appName.localizedCaseInsensitiveContains("KeyType")
+        HostAppIdentity.isSelfTarget(
+            bundleIdentifier: target.bundleIdentifier,
+            appName: target.appName
+        )
     }
 
     private nonisolated static func isKeyTypeBundleIdentifier(_ bundleIdentifier: String) -> Bool {
-        let normalized = bundleIdentifier.lowercased()
-        if let ownBundleIdentifier = Bundle.main.bundleIdentifier?.lowercased(),
-           normalized == ownBundleIdentifier {
-            return true
-        }
-        return normalized.hasPrefix("com.pattonium.keytype")
+        HostAppIdentity.isSelfBundleIdentifier(bundleIdentifier)
     }
 
     private static func contextKey(for context: TextFieldContext) -> String {
@@ -2233,7 +2228,7 @@ final class CompletionController {
         var description: String {
             switch self {
             case let .modelMissing(name):
-                return "Model file '\(name)' not found in Application Support/KeyType/Models"
+                return "Model file '\(name)' not found in Application Support/Libretype/Models"
             }
         }
     }

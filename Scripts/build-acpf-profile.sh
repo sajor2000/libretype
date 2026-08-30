@@ -7,15 +7,15 @@
 #     GGUF=...                 # source GGUF path (default: ModelContainer.modelURL())
 #     OUT=...                  # output .acpf.bin path (default: profileURL(family:))
 #
-# The output lives under ~/Library/Application Support/KeyType/Models/, never inside
+# The output lives under ~/Library/Application Support/Libretype/Models/, never inside
 # the repo. The builder runs ProfileSelfCheck against the produced file before exiting.
 
 set -euo pipefail
 
 FAMILY="${FAMILY:-qwen3-v151936}"
-DEFAULT_GGUF="$HOME/Library/Application Support/KeyType/Models/Qwen3.5-2B-Base-Q4_K_M.gguf"
+DEFAULT_GGUF="$HOME/Library/Application Support/Libretype/Models/Qwen3.5-2B-Base.i1-Q4_K_M.gguf"
 GGUF="${GGUF:-$DEFAULT_GGUF}"
-OUT="${OUT:-$HOME/Library/Application Support/KeyType/Models/${FAMILY}.acpf.bin}"
+OUT="${OUT:-$HOME/Library/Application Support/Libretype/Models/${FAMILY}.acpf.bin}"
 
 cd "$(dirname "$0")/.."
 

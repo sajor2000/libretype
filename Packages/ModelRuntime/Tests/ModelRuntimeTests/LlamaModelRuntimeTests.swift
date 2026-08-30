@@ -4,7 +4,7 @@ import ModelRuntime
 import XCTest
 
 /// On-device tests that require the GGUF placed at
-/// `~/Library/Application Support/KeyType/Models/<defaultModelFilename>` (see ADR-007).
+/// `~/Library/Application Support/Libretype/Models/<defaultModelFilename>` (see ADR-007).
 /// They `XCTSkipUnless(modelExists)` so the package's test suite stays green on machines
 /// that haven't dropped a model into the container yet.
 final class LlamaModelRuntimeTests: XCTestCase {

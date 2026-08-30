@@ -11,8 +11,11 @@ Runs the model through the comparison suites and regenerates:
 
 Options:
   --model PATH              GGUF model to evaluate. Required.
-  --result-name NAME        Result directory name under KeyTypeBench-20260603/Results/.
+  --result-name NAME        Result directory name under the results root.
                             Defaults to a catalog-style slug derived from the filename.
+  --results-root DIR        Directory for result trees. Defaults to
+                            KeyTypeBench-20260603/Results/. For Libretype S1 baselines use
+                            KeyTypeBench-20260607/Results/.
   --context-length N        Llama context length. Defaults to KeyTypeBench default.
   --profile PATH            ACPF profile path to use for this model.
   --profile-directory DIR   Directory containing <family>.acpf.bin profiles.
@@ -24,6 +27,8 @@ EOF
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 bench_root="$(cd "$script_dir/.." && pwd)"
 repo_root="$(cd "$bench_root/.." && pwd)"
+# Relative --results-root is resolved against the caller's cwd (captured before any cd).
+caller_cwd="$(pwd)"
 results_root="$bench_root/Results"
 
 model_path=""
@@ -41,6 +46,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --result-name)
       result_name="${2:-}"
+      shift 2
+      ;;
+    --results-root)
+      results_root="${2:-}"
       shift 2
       ;;
     --context-length)
@@ -70,6 +79,11 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+# Absolute results_root so later `cd "$repo_root"` does not change where outputs land.
+if [[ "$results_root" != /* ]]; then
+  results_root="${caller_cwd%/}/$results_root"
+fi
 
 if [[ -z "$model_path" ]]; then
   echo "--model is required." >&2

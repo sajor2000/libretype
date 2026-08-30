@@ -312,7 +312,10 @@ final class CorrectionController {
     }
 
     private static func isKeyTypeTarget(_ target: AppTarget) -> Bool {
-        target.bundleIdentifier == "com.pattonium.KeyType"
+        HostAppIdentity.isSelfTarget(
+            bundleIdentifier: target.bundleIdentifier,
+            appName: target.appName
+        )
     }
 
     private static func target(for candidate: CorrectionCandidate, context: TextFieldContext) -> CorrectionTarget {

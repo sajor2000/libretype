@@ -1,3 +1,4 @@
+import AutocompleteCore
 import Foundation
 
 /// Why a generated completion was not shown. Mirrors the controller's suppression taxonomy as a
@@ -274,7 +275,9 @@ public final class CompletionTelemetryStore: @unchecked Sendable {
             appropriateFor: nil,
             create: true
         )
-        let directory = support.appendingPathComponent("KeyType/Telemetry", isDirectory: true)
+        let directory = support
+            .appendingPathComponent(ApplicationSupportDirectory.name, isDirectory: true)
+            .appendingPathComponent("Telemetry", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         return directory.appendingPathComponent("telemetry.json", isDirectory: false)
     }

@@ -144,6 +144,8 @@ row here.**
 | 122 | Refine bare detected-language tags with the user's regional variant | generation/correction |
 | 123 | Gate KeyType by the selected macOS input method | settings/app |
 | 133 | Run Vision OCR off-main behind a fail-open single-flight gate | context-capture/ui |
+| 134 | Pin llama.cpp via Libretype-mirrored URL binaryTarget | model-runtime |
+| 135 | Rebrand identity surface to Libretype (KTD2–KTD5, KTD10) | app/identity |
 
 ---
 
@@ -3939,3 +3941,41 @@ text. Both are now closed:
   it cannot block the main actor or accumulate periodic capture work. Screen context and visual
   calibration fail open while ordinary completion, settings, and quit handling remain responsive.
   The two OCR features intentionally trade occasional suppression for process-wide liveness.
+
+## ADR-134 — Pin llama.cpp via Libretype-mirrored URL `binaryTarget`
+
+- Date: 2026-08-30
+- Status: accepted
+- Context: ADR-007 preferred `binaryTarget(url:checksum:)` but amended to a gitignored local path
+  because the ggml-org GitHub Releases CDN was unusable during M2. That local path breaks clean
+  clones (R22 / RN-1). Libretype needs a durable host under our control with bit-identical bytes.
+- Decision: Serve `llama-b9402-xcframework.zip` from
+  `https://github.com/sajor2000/libretype/releases/download/llama-b9402/` and pin
+  `Packages/ModelRuntime/Package.swift` to that URL with checksum
+  `ac9adcabf4638eced651010ff8280df98b9bb094d2ba882d89823bbd3c63b895` (matches upstream GitHub
+  asset digest and `swift package compute-checksum`). Do not pin to
+  `github.com/ggml-org/llama.cpp/releases`. Keep `Vendor/` as a documented llama.cpp-dev override
+  only — never the clean-clone path. **Pin-bump policy:** new ADR + recompute checksum + re-run
+  U7 baseline; CI must fail on local-path binding or ggml-org host (U2).
+- Consequences: Fresh clones resolve the framework via SPM. Release assets (~205 MB) live on
+  Libretype Releases. Developers patching llama.cpp temporarily switch to `path:` and must not
+  merge that form.
+
+## ADR-135 — Rebrand identity surface to Libretype (KTD2–KTD5, KTD10)
+
+- Date: 2026-08-30
+- Status: accepted
+- Context: Libretype forks KeyType and must own display name, bundle id, Application Support container, and Keychain namespace without renaming Xcode targets/schemes/packages (KD9). Upstream merge conflicts on identity strings are expected and must stay small. No migration from `~/Library/Application Support/KeyType` (KTD3). CorrectionController still matched only exact `com.pattonium.KeyType`, missing `.dev` parity with Completion/ContextCapture.
+- Decision:
+  1. `CFBundleDisplayName` / `INFOPLIST_KEY_CFBundleDisplayName` = Libretype; `PRODUCT_NAME` / target / scheme / entitlements filename stay KeyType.
+  2. Bundle ids: `io.github.sajor2000.libretype` (prod) and `io.github.sajor2000.libretype.dev` (dev script / smoke).
+  3. Application Support directory name lives in `AutocompleteCore.ApplicationSupportDirectory.name` (`"Libretype"`). Consumers: `ModelContainer`, `PersistentWritingHistoryStore`, `CompletionTelemetry`, `PredictionLog`, `FullPromptLog`, `DeveloperOverrideController`, plus scripts/`acpf-build` path strings. No KeyType→Libretype container migration; release notes must mention orphaned KeyType data.
+  4. Keychain service = `Bundle.main.bundleIdentifier + ".history"` (fallback `io.github.sajor2000.libretype.history`); `service:` override remains for tests. Isolates prod / `.dev` / legacy `com.pattonium.KeyType.history`.
+  5. Self-detection via `HostAppIdentity`: Bundle.main equality + `io.github.sajor2000.libretype` prefix + keep `com.pattonium.keytype` co-install exclusion + AX `appName` contains KeyType or Libretype. Correction uses the same rules.
+  6. Logger `subsystem:` strings stay `com.pattonium.KeyType` until a later polish pass (KTD4).
+- **KTD10 merge checklist** (re-run on every upstream pull):
+  1. `rg 'Application Support.*KeyType|appendingPathComponent\(\"KeyType\"\)'` — hits only behind `ApplicationSupportDirectory.name` (or intentional docs/history).
+  2. Keychain services still derive from Libretype bundle ids.
+  3. Self-detection still covers Libretype prefix + `com.pattonium.keytype` co-install exclusion.
+  4. Leave Logger subsystems on `com.pattonium.KeyType` unless a dedicated polish PR retargets them.
+- Consequences: New installs write under Libretype; co-installed KeyType keeps its container and Keychain items. Signing may require a team that owns the new bundle id (residual if automatic signing fails).

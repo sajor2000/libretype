@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: Build and test packages
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Select Xcode 16 (Swift 6 tools)
+        run: |
+          set -euo pipefail
+          # Personalization (and siblings) declare swift-tools-version: 6.0.
+          sudo xcode-select -s /Applications/Xcode_16.4.app/Contents/Developer \
+            || sudo xcode-select -s /Applications/Xcode_16.3.app/Contents/Developer \
+            || sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer \
+            || sudo xcode-select -s /Applications/Xcode_16.1.app/Contents/Developer \
+            || sudo xcode-select -s /Applications/Xcode_16.0.app/Contents/Developer \
+            || sudo xcode-select -s /Applications/Xcode_16.app/Contents/Developer
+          xcodebuild -version
+          swift --version
+
+      - name: Guard llama.cpp binaryTarget stays mirrored remote
+        run: |
+          set -euo pipefail
+          manifest="Packages/ModelRuntime/Package.swift"
+          if ! grep -q 'binaryTarget(' "$manifest"; then
+            echo "Missing binaryTarget in $manifest" >&2
+            exit 1
+          fi
+          if grep -E 'path:[[:space:]]*"Vendor/llama\.xcframework"' "$manifest"; then
+            echo "Committed Package.swift must not use local-path llama binding (ADR-134)" >&2
+            exit 1
+          fi
+          if grep -F 'github.com/ggml-org/llama.cpp/releases' "$manifest"; then
+            echo "Committed Package.swift must not pin ggml-org release CDN (ADR-007/ADR-134)" >&2
+            exit 1
+          fi
+          if ! grep -E 'url:[[:space:]]*"https://github.com/sajor2000/libretype/releases/' "$manifest"; then
+            echo "Committed Package.swift must pin Libretype Releases mirror host" >&2
+            exit 1
+          fi
+          if ! grep -E 'checksum:[[:space:]]*"[0-9a-f]{64}"' "$manifest"; then
+            echo "Committed Package.swift must include a non-empty SHA256 checksum" >&2
+            exit 1
+          fi
+          echo "binaryTarget mirror guard OK"
+
+      - name: Cache SPM
+        uses: actions/cache@v4
+        with:
+          path: |
+            .build
+            Packages/*/.build
+            ~/Library/Caches/org.swift.swiftpm
+          key: spm-${{ runner.os }}-${{ hashFiles('Packages/**/Package.swift') }}
+          restore-keys: |
+            spm-${{ runner.os }}-
+
+      - name: Build ModelRuntime (resolves mirrored xcframework)
+        run: swift build --package-path Packages/ModelRuntime
+
+      - name: Test AutocompleteCore
+        run: swift test --package-path Packages/AutocompleteCore
+
+      - name: Test Personalization
+        run: swift test --package-path Packages/Personalization
+
+      - name: Test ModelRuntime
+        run: swift test --package-path Packages/ModelRuntime
+
+      - name: Test KeyTypeBench (optional stand-in until U8)
+        run: swift test --package-path Packages/KeyTypeBench
+        continue-on-error: true

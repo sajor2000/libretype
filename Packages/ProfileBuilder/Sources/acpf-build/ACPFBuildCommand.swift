@@ -14,11 +14,11 @@ struct ACPFBuildCommand: AsyncParsableCommand {
 
     static let configuration = CommandConfiguration(
         commandName: "acpf-build",
-        abstract: "Produce a KeyType ACPF token-profile binary from a GGUF tokenizer.",
+        abstract: "Produce a Libretype ACPF token-profile binary from a GGUF tokenizer.",
         discussion: """
             Reads the tokenizer from the GGUF at --gguf, classifies every token, builds the
             byte-prefix trie + first-byte buckets + bias tables, and writes a memory-mappable
-            ACPF binary to --output (default: ~/Library/Application Support/KeyType/Models/
+            ACPF binary to --output (default: ~/Library/Application Support/Libretype/Models/
             <family>.acpf.bin). The output is gitignored by being outside the repo entirely.
             """
     )

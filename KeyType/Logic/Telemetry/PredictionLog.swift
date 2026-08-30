@@ -7,9 +7,10 @@
 //  it records the model's own output (the candidates) plus a short context tail; consistent with
 //  the "local & opt-in" posture, it lives only on disk under Application Support.
 //
-//  Location: ~/Library/Application Support/KeyType/Logs/predictions.log
+//  Location: ~/Library/Application Support/Libretype/Logs/predictions.log
 //
 
+import AutocompleteCore
 import Foundation
 import CoreGraphics
 import os
@@ -37,12 +38,14 @@ final class PredictionLog {
             return
         }
 
-        let directory = base.appendingPathComponent("KeyType/Logs", isDirectory: true)
+        let directory = base
+            .appendingPathComponent(ApplicationSupportDirectory.name, isDirectory: true)
+            .appendingPathComponent("Logs", isDirectory: true)
         try? fm.createDirectory(at: directory, withIntermediateDirectories: true)
         let url = directory.appendingPathComponent("predictions.log")
 
         // Truncate on launch: overwrite with a fresh header.
-        let header = "=== KeyType prediction log — \(ISO8601DateFormatter().string(from: Date())) ===\n"
+        let header = "=== Libretype prediction log — \(ISO8601DateFormatter().string(from: Date())) ===\n"
         do {
             try header.data(using: .utf8)?.write(to: url, options: .atomic)
             fileURL = url

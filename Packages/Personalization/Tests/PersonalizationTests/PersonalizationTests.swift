@@ -484,7 +484,7 @@ final class PersonalizationTests: XCTestCase {
     // MARK: - Keychain
 
     func testKeychainPassphraseRoundTripIfAvailable() throws {
-        let service = "com.pattonium.KeyType.tests.\(UUID().uuidString)"
+        let service = "io.github.sajor2000.libretype.tests.\(UUID().uuidString)"
         let account = "test"
         do {
             let first = try KeychainPassphrase.loadOrCreate(service: service, account: account)
@@ -493,6 +493,47 @@ final class PersonalizationTests: XCTestCase {
             XCTAssertEqual(first.count, 64, "32 random bytes hex-encoded")
             try KeychainPassphrase.delete(service: service, account: account)
             XCTAssertNil(try KeychainPassphrase.load(service: service, account: account))
+        } catch {
+            throw XCTSkip("Keychain unavailable in this environment: \(error)")
+        }
+    }
+
+    func testKeychainServiceDerivationAndIsolationIfAvailable() throws {
+        let account = "isolation-\(UUID().uuidString)"
+        let prod = KeychainPassphrase.derivedService(bundleIdentifier: "io.github.sajor2000.libretype")
+        let dev = KeychainPassphrase.derivedService(bundleIdentifier: "io.github.sajor2000.libretype.dev")
+        XCTAssertEqual(prod, "io.github.sajor2000.libretype.history")
+        XCTAssertEqual(dev, "io.github.sajor2000.libretype.dev.history")
+        XCTAssertEqual(
+            KeychainPassphrase.derivedService(bundleIdentifier: nil),
+            KeychainPassphrase.defaultService
+        )
+
+        do {
+            let prodPassphrase = try KeychainPassphrase.loadOrCreate(service: prod, account: account)
+            let legacyPassphrase = try KeychainPassphrase.loadOrCreate(
+                service: KeychainPassphrase.legacyKeyTypeService,
+                account: account
+            )
+            XCTAssertNotEqual(prodPassphrase, legacyPassphrase)
+            XCTAssertNil(try KeychainPassphrase.load(service: dev, account: account))
+            XCTAssertEqual(
+                try KeychainPassphrase.load(service: KeychainPassphrase.legacyKeyTypeService, account: account),
+                legacyPassphrase
+            )
+            XCTAssertNotEqual(
+                try KeychainPassphrase.load(service: KeychainPassphrase.legacyKeyTypeService, account: account),
+                prodPassphrase
+            )
+
+            try KeychainPassphrase.delete(service: prod, account: account)
+            XCTAssertNil(try KeychainPassphrase.load(service: prod, account: account))
+            XCTAssertEqual(
+                try KeychainPassphrase.load(service: KeychainPassphrase.legacyKeyTypeService, account: account),
+                legacyPassphrase,
+                "clearing Libretype service must leave a KeyType-service item intact"
+            )
+            try KeychainPassphrase.delete(service: KeychainPassphrase.legacyKeyTypeService, account: account)
         } catch {
             throw XCTSkip("Keychain unavailable in this environment: \(error)")
         }
