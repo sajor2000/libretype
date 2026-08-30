@@ -14,12 +14,31 @@ final class HostAppIdentityTests: XCTestCase {
     }
 
     func testCoInstalledKeyTypePrefixRemainsExcluded() {
+        // Canonical lowercase prefix (ADR-135) and the historical KeyType casing.
+        XCTAssertTrue(HostAppIdentity.isSelfBundleIdentifier(
+            "com.pattonium.keytype",
+            ownBundleIdentifier: "io.github.sajor2000.libretype"
+        ))
         XCTAssertTrue(HostAppIdentity.isSelfBundleIdentifier(
             "com.pattonium.KeyType",
             ownBundleIdentifier: "io.github.sajor2000.libretype"
         ))
         XCTAssertTrue(HostAppIdentity.isSelfBundleIdentifier(
             "com.pattonium.KeyType.dev",
+            ownBundleIdentifier: "io.github.sajor2000.libretype"
+        ))
+    }
+
+    func testSelfTargetUsesProdAndCoInstallBundleIDs() {
+        // Completion / Correction call isSelfTarget; lock the bundle-id path (not only appName).
+        XCTAssertTrue(HostAppIdentity.isSelfTarget(
+            bundleIdentifier: "io.github.sajor2000.libretype",
+            appName: "Notes",
+            ownBundleIdentifier: "io.github.sajor2000.libretype.dev"
+        ))
+        XCTAssertTrue(HostAppIdentity.isSelfTarget(
+            bundleIdentifier: "com.pattonium.keytype",
+            appName: "Notes",
             ownBundleIdentifier: "io.github.sajor2000.libretype"
         ))
     }
