@@ -82,3 +82,19 @@ jobs:
       - name: Test KeyTypeBench (optional stand-in until U8)
         run: swift test --package-path Packages/KeyTypeBench
         continue-on-error: true
+
+      # Matches Scripts/build-dev-app.sh (workspace/scheme/destination). Unsigned so
+      # CI does not need Apple Developer secrets (project uses Automatic signing).
+      - name: Build KeyType app target
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -workspace KeyType.xcworkspace \
+            -scheme KeyType \
+            -configuration Debug \
+            -destination "platform=macOS" \
+            -derivedDataPath .build/DerivedData-ci \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
