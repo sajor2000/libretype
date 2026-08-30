@@ -68,19 +68,57 @@ files are gitignored.
 
 ## Alpha smoke (U5)
 
-After a rebrand build:
+U5 proves the rebranded `.dev` build still does ghost text + Tab accept under Libretype identity,
+without self-capture (R21, AE4). Full interactive Accessibility smoke is **human / Mac-only** —
+this section is the prep checklist so that session is short and falsifiable. Do **not** mark U5
+complete until the human checklist passes.
+
+### Build the `.dev` app
 
 ```sh
 Scripts/build-dev-app.sh
 ```
 
-Checklist (`.dev` identity `io.github.sajor2000.libretype.dev`):
+Installs `/Applications/Libretype Dev.app` with bundle id `io.github.sajor2000.libretype.dev`
+(PRODUCT_NAME remains `KeyType`; display name is Libretype Dev).
 
-1. Grant Accessibility; confirm model under `~/Library/Application Support/Libretype/Models/`.
-2. Ghost text + Tab accept in Notes (or similar); next-word tail retained.
-3. Password / secure field: no ghost text; `predictions.log` shows `secureFieldExcluded` (or equivalent suppress).
-4. Focus Libretype Dev settings/onboarding: no self-capture.
-5. Optional unit fixtures cover prod bundle id and co-installed `com.pattonium.KeyType` exclusion.
+### Automatable fixtures (run anytime)
+
+Prod self-exclusion and co-installed KeyType are covered by unit tests — no second clean-machine
+prod smoke in S0:
+
+```sh
+# Self-exclusion / co-install identity
+swift test --package-path Packages/AutocompleteCore --filter HostAppIdentityTests
+
+# AE4: CandidateFilter secure-field suppress (`secureFieldExcluded`)
+swift test --package-path Packages/ConstrainedGeneration --filter CandidateFilterTests/testSecureFieldExcluded
+
+# AE4: KeyTypeBench suite (includes secure-field / suppress scoring cases)
+swift test --package-path Packages/KeyTypeBench
+```
+
+`HostAppIdentity` / `KeyTypeTests` fixtures assert:
+
+- prod `io.github.sajor2000.libretype` and `.dev`
+- co-installed `com.pattonium.keytype` / `com.pattonium.KeyType` (and `.dev`)
+- unrelated hosts and `*helper` suffix false positives stay out
+
+AE4 automated baseline: the CandidateFilter + KeyTypeBench commands above must stay green
+(`secureFieldExcluded` / secure-field suppress cases).
+### Human interactive checklist (Mac + Accessibility)
+
+Work as Libretype Dev (`.dev`). Log path:
+`~/Library/Application Support/Libretype/Logs/predictions.log` (truncated each launch).
+
+1. Grant Accessibility to Libretype Dev; confirm a model under
+   `~/Library/Application Support/Libretype/Models/` (not a KeyType container).
+2. In Notes (or similar plain field): ghost text appears; Tab accepts; next-word tail retained.
+3. **AE4:** focus a password / secure field — no ghost text; `predictions.log` records
+   `secureFieldExcluded` (or equivalent suppress reason), not silent absence.
+4. Focus Libretype Dev settings / onboarding — no self-capture (no ghost in own UI).
+5. Co-install (if KeyType is still installed): Libretype does not capture inside KeyType windows;
+   prefixes keep both identities excluded from each other.
 
 ## Before you open a pull request
 
