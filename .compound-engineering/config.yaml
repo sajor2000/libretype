@@ -1,0 +1,19 @@
+# Compound Engineering — Libretype repo config
+# Team defaults. Local overrides go in .compound-engineering/config.local.yaml (gitignored).
+# See the plugin's config.example.yaml for the full key reference.
+
+# Artifact root stays the default `docs`, so CE artifacts sit alongside the upstream
+# docs/00–09 architecture set and Libretype's own docs/plans + docs/research.
+# docs_root: docs
+
+# --- Output format ---
+# Markdown, not HTML: these artifacts are reviewed in pull requests and diffed against
+# upstream merges, both of which need plain text.
+plan_output: md
+brainstorm_output: md
+ideate_output: md
+
+# --- Planning ---
+# Keep the scoping confirmation gate on. This project's whole risk is building the wrong
+# thing quickly, so an explicit scope check before research is worth the pause.
+plan_skip_scoping_confirm: false

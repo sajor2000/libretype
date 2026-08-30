@@ -41,6 +41,9 @@ Packages/ModelRuntime/Vendor/
 *.gguf
 /Models/
 
+# Compound Engineering per-developer overrides (config.yaml is tracked)
+.compound-engineering/config.local.yaml
+
 # Completion benchmark local/private data and generated reports
 KeyTypeBench-20260603/Private/
 KeyTypeBench-20260603/Results/
