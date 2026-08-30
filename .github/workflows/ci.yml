@@ -86,6 +86,8 @@ jobs:
       # Matches Scripts/build-dev-app.sh (workspace/scheme/destination). Unsigned so
       # CI does not need Apple Developer secrets (project uses Automatic signing).
       - name: Build KeyType app target
+        env:
+          KEYTYPE_SKIP_DEV_APP_INSTALL: "1"
         run: |
           set -euo pipefail
           xcodebuild \
