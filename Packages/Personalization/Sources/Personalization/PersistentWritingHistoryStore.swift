@@ -1,3 +1,4 @@
+import AutocompleteCore
 import Foundation
 import GRDB
 import Prompting
@@ -73,7 +74,7 @@ struct StoredWritingSample: Codable, FetchableRecord, MutablePersistableRecord {
 ///
 /// - Encryption: the database is opened with a Keychain-held passphrase
 ///   (`KeychainPassphrase`); the file on disk is unreadable without it.
-/// - Privacy: all data stays in `~/Library/Application Support/KeyType/History/` and is removed in
+/// - Privacy: all data stays in `~/Library/Application Support/Libretype/History/` and is removed in
 ///   one action via `clearAll()` (the app also wipes the Keychain passphrase).
 /// - Resilience: `record(_:)`/`samples(for:)` never throw out to the live completion path — they
 ///   swallow database errors and degrade to a no-op / empty result so a storage hiccup can't break
@@ -97,7 +98,8 @@ public final class PersistentWritingHistoryStore: WritingHistoryStoring, @unchec
             create: true
         )
         let directory = support
-            .appendingPathComponent("KeyType/History", isDirectory: true)
+            .appendingPathComponent(ApplicationSupportDirectory.name, isDirectory: true)
+            .appendingPathComponent("History", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         return directory.appendingPathComponent("history.sqlcipher", isDirectory: false)
     }

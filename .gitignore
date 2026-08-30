@@ -35,7 +35,7 @@ secrets.json
 # Vendored binary frameworks (llama.cpp xcframework lives outside git, see ADR-007)
 Packages/ModelRuntime/Vendor/
 
-# Model weights (stay in ~/Library/Application Support/KeyType/Models, never in the repo).
+# Model weights (stay in ~/Library/Application Support/Libretype/Models, never in the repo).
 # Anchored to the repo root: a bare "Models/" also swallowed the source directory
 # KeyType/Logic/Models/, which is how ModelSetupCoordinator.swift went missing upstream.
 *.gguf
@@ -47,6 +47,8 @@ Packages/ModelRuntime/Vendor/
 # Completion benchmark local/private data and generated reports
 KeyTypeBench-20260603/Private/
 KeyTypeBench-20260603/Results/
+KeyTypeBench-20260607/Results/
 KeyTypeBench-20260603/Datasets/private/
 KeyTypeBench-20260603/Datasets/local/
 Packages/KeyTypeBench/Sources/KeyTypeBench/Datasets/private/
+KeyTypeBench-20260607/Results/

@@ -1,25 +1,26 @@
 import Foundation
+import AutocompleteCore
 
-/// Resolves on-disk paths inside KeyType's per-user Application Support container.
+/// Resolves on-disk paths inside Libretype's per-user Application Support container.
 ///
 /// Layout:
 ///
-///     ~/Library/Application Support/KeyType/
+///     ~/Library/Application Support/Libretype/
 ///         Models/<file>.gguf
 ///         …
 ///
 /// Nothing here downloads or fetches; we assume the user has already placed the model file
 /// at the expected location (see ADR-007). The container is intentionally outside the git
 /// repo and the Xcode project so model weights and other large local-only assets never get
-/// committed by accident.
+/// committed by accident. Directory name comes from `ApplicationSupportDirectory` (ADR-135).
 public enum ModelContainer {
     /// Bundle-style identifier used to namespace the Application Support directory.
-    public static let directoryName = "KeyType"
+    public static let directoryName = ApplicationSupportDirectory.name
 
     /// Default GGUF: the recommended Qwen3.5 2B base build from the downloadable catalog.
     public static let defaultModelFilename = "Qwen3.5-2B-Base.i1-Q4_K_M.gguf"
 
-    /// `~/Library/Application Support/KeyType` (creating it lazily on demand).
+    /// `~/Library/Application Support/Libretype` (creating it lazily on demand).
     public static func containerURL(create: Bool = false) throws -> URL {
         let fm = FileManager.default
         let support = try fm.url(

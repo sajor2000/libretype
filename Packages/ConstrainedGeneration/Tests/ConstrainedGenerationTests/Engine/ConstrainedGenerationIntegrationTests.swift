@@ -6,7 +6,7 @@ import TokenProfiles
 import XCTest
 
 /// On-device acceptance test for M5. Requires both the GGUF (see ADR-007) and a built ACPF
-/// profile (see ADR-009) in `~/Library/Application Support/KeyType/Models/`. The test
+/// profile (see ADR-009) in `~/Library/Application Support/Libretype/Models/`. The test
 /// `XCTSkipUnless` / `XCTSkip`s when either asset (or the vendored llama framework) is absent,
 /// so the package suite stays green on machines that haven't provisioned them.
 final class ConstrainedGenerationIntegrationTests: XCTestCase {

@@ -7,12 +7,30 @@ import Security
 /// 256-bit random value generated once and kept in the macOS Keychain (generic password,
 /// `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`, so it stays on this device and survives
 /// reboots without iCloud sync). Deleting it makes the encrypted database permanently unreadable —
-/// which is exactly what the "Clear all personal data" action relies on as a backstop. See ADR-023.
+/// which is exactly what the "Clear all personal data" action relies on as a backstop. See ADR-023
+/// and ADR-135 (service derives from the running bundle id so Libretype / `.dev` / KeyType stay
+/// isolated).
 public enum KeychainPassphrase {
-    /// Service identifier namespacing KeyType's keychain items.
-    public static let service = "com.pattonium.KeyType.history"
+    /// Fallback when `Bundle.main.bundleIdentifier` is missing (package tests / XCTest hosts).
+    public static let defaultService = "io.github.sajor2000.libretype.history"
+
+    /// Legacy KeyType service — kept only so isolation tests can prove we do not share keys.
+    public static let legacyKeyTypeService = "com.pattonium.KeyType.history"
+
+    /// Service identifier for the running process: `"\(bundleID).history"`.
+    public static var service: String {
+        derivedService(bundleIdentifier: Bundle.main.bundleIdentifier)
+    }
+
     /// Account key for the database passphrase item.
     public static let account = "db-passphrase"
+
+    public static func derivedService(bundleIdentifier: String?) -> String {
+        guard let bundleIdentifier, !bundleIdentifier.isEmpty else {
+            return defaultService
+        }
+        return bundleIdentifier + ".history"
+    }
 
     public enum KeychainError: Error, CustomStringConvertible {
         case randomGenerationFailed
@@ -31,7 +49,7 @@ public enum KeychainPassphrase {
     /// Returns the existing passphrase, generating and persisting a fresh random one on first use.
     /// Idempotent: subsequent calls return the same value so the database opens consistently.
     public static func loadOrCreate(
-        service: String = service,
+        service: String = KeychainPassphrase.service,
         account: String = account
     ) throws -> String {
         if let existing = try load(service: service, account: account) {
@@ -44,7 +62,7 @@ public enum KeychainPassphrase {
 
     /// Reads the stored passphrase, or `nil` when none has been created yet.
     public static func load(
-        service: String = service,
+        service: String = KeychainPassphrase.service,
         account: String = account
     ) throws -> String? {
         let query: [String: Any] = [
@@ -72,7 +90,7 @@ public enum KeychainPassphrase {
 
     /// Removes the passphrase from the keychain. Safe to call when nothing is stored.
     public static func delete(
-        service: String = service,
+        service: String = KeychainPassphrase.service,
         account: String = account
     ) throws {
         let query: [String: Any] = [

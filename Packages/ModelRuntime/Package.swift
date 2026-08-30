@@ -20,11 +20,13 @@ let package = Package(
                 .product(name: "AutocompleteCore", package: "AutocompleteCore")
             ]
         ),
-        // llama.cpp xcframework (see ADR-007). The framework is gitignored under Vendor/
-        // and must be present locally for the LlamaModelRuntime target to build.
+        // llama.cpp xcframework via Libretype-mirrored URL+checksum (ADR-007 preferred form;
+        // ADR-134). Local-path override under Vendor/ is for llama.cpp development only —
+        // see CONTRIBUTING.md. Pin bumps require a new ADR and U7 baseline re-run.
         .binaryTarget(
             name: "llama",
-            path: "Vendor/llama.xcframework"
+            url: "https://github.com/sajor2000/libretype/releases/download/llama-b9402/llama-b9402-xcframework.zip",
+            checksum: "ac9adcabf4638eced651010ff8280df98b9bb094d2ba882d89823bbd3c63b895"
         ),
         .target(
             name: "LlamaModelRuntime",

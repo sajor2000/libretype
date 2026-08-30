@@ -203,7 +203,7 @@ ${FIX_COMMITS:-No bug fixes in this release.}
 
     RELEASE_NOTES_HTML="<h2>New Features</h2>$(markdown_list_to_html "$FEAT_COMMITS" "No new features in this release.")<h2>Bug Fixes</h2>$(markdown_list_to_html "$FIX_COMMITS" "No bug fixes in this release.")"
 else
-    RELEASE_NOTES="# KeyType
+    RELEASE_NOTES="# Libretype
 
 On-device, system-wide tab autocomplete for macOS.
 

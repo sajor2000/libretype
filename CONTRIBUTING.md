@@ -21,30 +21,35 @@ in the tree for now.
 ### The llama.cpp framework
 
 Inference is backed by llama.cpp, consumed as a prebuilt Apple `xcframework` through a Swift Package
-Manager binary target.
+Manager URL+checksum `binaryTarget` (see ADR-007 / ADR-134). Clean clones resolve the framework
+from the Libretype GitHub Releases mirror automatically:
 
-> **Known blocker, being fixed.** Inherited from upstream, `Packages/ModelRuntime/Package.swift`
-> binds the framework from a **gitignored local path** (`Vendor/llama.xcframework`), so a clean
-> clone does **not** build until you produce the framework yourself. Libretype is switching this to
-> a checksum-pinned URL binding, which llama.cpp officially supports, so that `git clone && swift build`
-> just works. Reasoning and sources:
-> [`docs/research/2026-08-30-fork-architecture-anchors.md`](docs/research/2026-08-30-fork-architecture-anchors.md)
-> (RN-1).
+```sh
+git clone https://github.com/sajor2000/libretype.git
+cd libretype
+swift build --package-path Packages/ModelRuntime
+```
 
-Until that lands, build the framework yourself and drop it at
-`Packages/ModelRuntime/Vendor/llama.xcframework`:
+Do **not** pin `Packages/ModelRuntime/Package.swift` to `github.com/ggml-org/llama.cpp/releases`
+(ADR-007 abandoned that CDN). The mirror host and checksum live in that `Package.swift`; bumping
+them requires a new ADR and a re-run of the U7 baseline.
+
+**llama.cpp development override only:** place a locally built framework at
+`Packages/ModelRuntime/Vendor/llama.xcframework` and temporarily switch the `binaryTarget` back to
+`path: "Vendor/llama.xcframework"`. Do not commit the framework or leave a local-path binding on
+the default branch — CI rejects that form.
 
 ```sh
 git clone https://github.com/ggml-org/llama.cpp
 cd llama.cpp && ./build-xcframework.sh
+# then copy/link the resulting xcframework into Packages/ModelRuntime/Vendor/
 ```
 
-Do not commit the framework — `.gitignore` excludes it deliberately.
+To regenerate a checksum after mirroring a new zip:
 
-Once the URL binding lands, this manual step disappears and building from a local llama.cpp becomes
-the opt-in path for llama.cpp development only. Bumping the pinned version will then mean changing
-the release tag in the URL and regenerating the checksum with
-`swift package compute-checksum <file>.zip`, recorded as an ADR in `docs/05-decisions.md`.
+```sh
+swift package compute-checksum llama-bNNNN-xcframework.zip
+```
 
 ### Models
 
@@ -60,6 +65,22 @@ files are gitignored.
 | `docs/plans/` | Libretype requirements and sprint order. |
 | `docs/research/` | Evidence for every architectural decision, with citations. |
 | `Scripts/` | Dev build, profile generation, and release tooling. |
+
+## Alpha smoke (U5)
+
+After a rebrand build:
+
+```sh
+Scripts/build-dev-app.sh
+```
+
+Checklist (`.dev` identity `io.github.sajor2000.libretype.dev`):
+
+1. Grant Accessibility; confirm model under `~/Library/Application Support/Libretype/Models/`.
+2. Ghost text + Tab accept in Notes (or similar); next-word tail retained.
+3. Password / secure field: no ghost text; `predictions.log` shows `secureFieldExcluded` (or equivalent suppress).
+4. Focus Libretype Dev settings/onboarding: no self-capture.
+5. Optional unit fixtures cover prod bundle id and co-installed `com.pattonium.KeyType` exclusion.
 
 ## Before you open a pull request
 

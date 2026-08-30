@@ -35,7 +35,7 @@ struct DeveloperSettingsView: View {
                 Toggle(isOn: $settings.fullPromptLoggingEnabled) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Log full prompts and completions")
-                        Text("Writes shareable JSONL to ~/Library/Application Support/KeyType/Logs/\(FullPromptLog.fileName) and keeps the newest \(FullPromptLog.maxRows) rows.")
+                        Text("Writes shareable JSONL to ~/Library/Application Support/Libretype/Logs/\(FullPromptLog.fileName) and keeps the newest \(FullPromptLog.maxRows) rows.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }

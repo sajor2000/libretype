@@ -92,7 +92,7 @@ struct OnboardingView: View {
         case .done:
             HStack {
                 Spacer()
-                Button("Start Using KeyType") { finish() }
+                Button("Start Using Libretype") { finish() }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)
             }
@@ -163,7 +163,7 @@ struct OnboardingView: View {
                 .font(.system(size: 44, weight: .regular))
                 .foregroundStyle(.tint)
                 .padding(.top, 8)
-            Text("Welcome to KeyType")
+            Text("Welcome to Libretype")
                 .font(.title.weight(.semibold))
             Text("On-device tab-autocomplete for any text field on your Mac. Private by default, powered by a local model.")
                 .font(.callout)
@@ -178,8 +178,8 @@ struct OnboardingView: View {
     @ViewBuilder
     private var permissionsStep: some View {
         StepHeader(
-            title: "Enable KeyType",
-            subtitle: "KeyType needs a couple of permissions to read the focused field and accept completions."
+            title: "Enable Libretype",
+            subtitle: "Libretype needs a couple of permissions to read the focused field and accept completions."
         )
         VStack(spacing: 10) {
             PermissionCard(
@@ -192,14 +192,14 @@ struct OnboardingView: View {
             PermissionCard(
                 kind: .inputMonitoring,
                 requirement: .required,
-                explanation: "Detects configured global accept keys so KeyType can insert a completion.",
+                explanation: "Detects configured global accept keys so Libretype can insert a completion.",
                 isGranted: permissions.inputMonitoring.isGranted,
                 guidance: permissionGuidance
             )
             PermissionCard(
                 kind: .screenRecording,
                 requirement: .optional,
-                explanation: "Optional. Lets KeyType read on-screen text (OCR) from the focused window as extra context, when you enable it in Privacy. KeyType works without it.",
+                explanation: "Optional. Lets Libretype read on-screen text (OCR) from the focused window as extra context, when you enable it in Privacy. Libretype works without it.",
                 isGranted: permissions.screenRecording.isGranted,
                 guidance: permissionGuidance
             )
@@ -288,7 +288,7 @@ struct OnboardingView: View {
     private var predictionsStep: some View {
         StepHeader(
             title: "Turn off macOS predictions",
-            subtitle: "macOS has its own inline prediction that draws ghost text too. Turn it off so it doesn't collide with KeyType."
+            subtitle: "macOS has its own inline prediction that draws ghost text too. Turn it off so it doesn't collide with Libretype."
         )
         VStack(alignment: .leading, spacing: 14) {
             CardContainer {
@@ -354,7 +354,7 @@ struct OnboardingView: View {
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Label("Find KeyType in your menu bar.", systemImage: "menubar.arrow.up.rectangle")
+            Label("Find Libretype in your menu bar.", systemImage: "menubar.arrow.up.rectangle")
                 .font(.footnote)
                 .foregroundStyle(.tertiary)
                 .padding(.top, 4)

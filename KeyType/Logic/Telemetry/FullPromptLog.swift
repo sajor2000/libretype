@@ -36,7 +36,9 @@ final class FullPromptLog {
             return
         }
 
-        let directory = base.appendingPathComponent("KeyType/Logs", isDirectory: true)
+        let directory = base
+            .appendingPathComponent(ApplicationSupportDirectory.name, isDirectory: true)
+            .appendingPathComponent("Logs", isDirectory: true)
         try? fm.createDirectory(at: directory, withIntermediateDirectories: true)
         let url = directory.appendingPathComponent(Self.fileName)
         fileURL = url

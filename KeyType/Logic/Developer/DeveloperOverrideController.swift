@@ -261,7 +261,7 @@ final class DeveloperOverrideController {
             in: .userDomainMask
         ).first ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library/Application Support")
         return applicationSupport
-            .appendingPathComponent("KeyType", isDirectory: true)
+            .appendingPathComponent(ApplicationSupportDirectory.name, isDirectory: true)
             .appendingPathComponent("DeveloperOverrides.json")
     }
 }

@@ -159,26 +159,17 @@ final class ContextCaptureController {
     }
 
     static func shouldPreserveLatestTunableSnapshotOnMissingSnapshot(frontmostBundleIdentifier: String?) -> Bool {
-        guard let bundleIdentifier = frontmostBundleIdentifier?.lowercased() else {
+        guard let bundleIdentifier = frontmostBundleIdentifier else {
             return false
         }
-        if let ownBundleIdentifier = Bundle.main.bundleIdentifier?.lowercased(),
-           bundleIdentifier == ownBundleIdentifier {
-            return true
-        }
-        return bundleIdentifier.hasPrefix("com.pattonium.keytype")
+        return HostAppIdentity.isSelfBundleIdentifier(bundleIdentifier)
     }
 
     private static func isKeyTypeTarget(_ target: AppTarget) -> Bool {
-        let bundleIdentifier = target.bundleIdentifier.lowercased()
-        if let ownBundleIdentifier = Bundle.main.bundleIdentifier?.lowercased(),
-           bundleIdentifier == ownBundleIdentifier {
-            return true
-        }
-        if bundleIdentifier.hasPrefix("com.pattonium.keytype") {
-            return true
-        }
-        return target.appName.localizedCaseInsensitiveContains("KeyType")
+        HostAppIdentity.isSelfTarget(
+            bundleIdentifier: target.bundleIdentifier,
+            appName: target.appName
+        )
     }
     
 }

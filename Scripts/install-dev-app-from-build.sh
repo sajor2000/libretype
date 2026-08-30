@@ -2,12 +2,12 @@
 set -euo pipefail
 
 SOURCE_APP="${1:-${TARGET_BUILD_DIR:-}/${FULL_PRODUCT_NAME:-}}"
-DEST_APP="${KEYTYPE_DEV_APP_PATH:-/Applications/KeyType Dev.app}"
-DEV_APP_NAME="${KEYTYPE_DEV_APP_NAME:-KeyType Dev}"
-DEV_BUNDLE_ID="${KEYTYPE_DEV_BUNDLE_ID:-com.pattonium.KeyType.dev}"
+DEST_APP="${KEYTYPE_DEV_APP_PATH:-/Applications/Libretype Dev.app}"
+DEV_APP_NAME="${KEYTYPE_DEV_APP_NAME:-Libretype Dev}"
+DEV_BUNDLE_ID="${KEYTYPE_DEV_BUNDLE_ID:-io.github.sajor2000.libretype.dev}"
 
 if [[ -z "$SOURCE_APP" || ! -d "$SOURCE_APP" ]]; then
-  echo "warning: KeyType dev install skipped; source app not found at $SOURCE_APP"
+  echo "warning: Libretype dev install skipped; source app not found at $SOURCE_APP"
   exit 0
 fi
 
