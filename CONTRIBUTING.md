@@ -88,7 +88,14 @@ Prod self-exclusion and co-installed KeyType are covered by unit tests — no se
 prod smoke in S0:
 
 ```sh
+# Self-exclusion / co-install identity
 swift test --package-path Packages/AutocompleteCore --filter HostAppIdentityTests
+
+# AE4: CandidateFilter secure-field suppress (`secureFieldExcluded`)
+swift test --package-path Packages/ConstrainedGeneration --filter CandidateFilterTests/testSecureFieldExcluded
+
+# AE4: KeyTypeBench suite (includes secure-field / suppress scoring cases)
+swift test --package-path Packages/KeyTypeBench
 ```
 
 `HostAppIdentity` / `KeyTypeTests` fixtures assert:
@@ -97,9 +104,8 @@ swift test --package-path Packages/AutocompleteCore --filter HostAppIdentityTest
 - co-installed `com.pattonium.keytype` / `com.pattonium.KeyType` (and `.dev`)
 - unrelated hosts and `*helper` suffix false positives stay out
 
-AE4 automated baseline: existing `CandidateFilter` / KeyTypeBench secure-field suppress cases
-(`secureFieldExcluded`) must stay green.
-
+AE4 automated baseline: the CandidateFilter + KeyTypeBench commands above must stay green
+(`secureFieldExcluded` / secure-field suppress cases).
 ### Human interactive checklist (Mac + Accessibility)
 
 Work as Libretype Dev (`.dev`). Log path:
