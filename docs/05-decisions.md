@@ -3979,3 +3979,23 @@ text. Both are now closed:
   3. Self-detection still covers Libretype prefix + `com.pattonium.keytype` co-install exclusion.
   4. Leave Logger subsystems on `com.pattonium.KeyType` unless a dedicated polish PR retargets them.
 - Consequences: New installs write under Libretype; co-installed KeyType keeps its container and Keychain items. Signing may require a team that owns the new bundle id (residual if automatic signing fails).
+
+## ADR-136 — Libretype Dock/menu brand mark (U4 / R21)
+
+- Date: 2026-08-30
+- Status: accepted
+- Context: R21 requires a distinct Libretype icon. Upstream ADR-042’s KeyType mark is a caret plus
+  three cyan continuation bars on a glass keycap. Cloning that would leave Libretype visually
+  indistinguishable from KeyType in the Dock and README.
+- Decision: Keep the Icon Composer three-variant layout (`KeyType-Light` / `Dark` / `Clear` filenames
+  and `icon.json` layer wiring unchanged for merge cheapness). Replace the raster sources with a
+  geometric **L** plus a short teal caret in the L’s crook (typewriter / insertion-point adjacent).
+  Light uses ink L on paper face with teal caret; dark inverts L to light on charcoal; clear is
+  monochrome for tinted appearance. AccentColor is deep teal (`#05625F` light / brighter
+  `#14B8A6`-class for dark), not KeyType cyan and not purple. Populate
+  `AppIcon.appiconset` mac sizes from the light master as a legacy catalog fallback;
+  `ASSETCATALOG_COMPILER_APPICON_NAME` remains `KeyType` (Icon Composer package). Paths for
+  contributors are unchanged.
+- Consequences: Dock/menu mark reads as Libretype, not KeyType. Fine-tuning accent/README polish
+  before public listing may wait for S7. Icon filenames stay KeyType-* to avoid churn in
+  `icon.json` / Xcode resources.
