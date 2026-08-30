@@ -138,7 +138,7 @@ final class ScreenContextController {
         }
         let bundle = context.target.bundleIdentifier
         if bundle == "unknown" { return false }
-        if bundle == Bundle.main.bundleIdentifier { return false }
+        if HostAppIdentity.isSelfBundleIdentifier(bundle) { return false }
         if settings.perAppDisabled.contains(bundle) { return false }
         if !compatibilityStore.policy(for: context).isCompletionEnabled { return false }
         return true
