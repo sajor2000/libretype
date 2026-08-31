@@ -15,7 +15,7 @@ final class QwenProfileBuilderTests: XCTestCase {
 
     private func skipIfModelMissing() throws {
         try XCTSkipUnless(ModelContainer.defaultModelExists(),
-                          "Default Qwen GGUF not present at \(try? ModelContainer.modelURL().path ?? "?")")
+                          "Default Qwen GGUF not present at \((try? ModelContainer.modelURL().path) ?? "?")")
     }
 
     private func tempOutputURL() throws -> URL {

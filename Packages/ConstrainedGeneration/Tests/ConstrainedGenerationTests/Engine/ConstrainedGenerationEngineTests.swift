@@ -874,6 +874,34 @@ final class ConstrainedGenerationEngineTests: XCTestCase {
         XCTAssertEqual(fixed.map(\.text), [" collaboration "], "healed nonsense dropped, real word kept")
     }
 
+    func testHealedCompleteWordCanStartNextWordWithoutTypoDrop() async throws {
+        let records = [
+            record(1, " brown"), record(20, " fox"), record(21, " jumps")
+        ]
+        let logits: [[TokenID]: [TokenLogit]] = [
+            []: [logit(1, 2.0)],
+            [1]: [logit(20, 2.0)],
+            [1, 20]: [logit(21, 2.0)]
+        ]
+        let healedRequest = CompletionRequest(
+            context: TextFieldContext(beforeCursor: "The quick brown", afterCursor: "", target: Self.testTarget),
+            prompt: "",
+            requiredPrefixBytes: Array(" brown".utf8),
+            mode: .prose,
+            maxCompletionTokens: 3,
+            maxDisplayWidth: 80
+        )
+        let engine = ConstrainedGenerationEngine(
+            runtime: runtime(logits),
+            profile: profile(records),
+            wordRecognizer: StubRecognizer(known: [])
+        )
+
+        let candidates = try await engine.completions(for: healedRequest)
+
+        XCTAssertEqual(candidates.map(\.text), [" brown fox jumps"])
+    }
+
     func testHealedMidWordBoundaryBranchDroppedInBeam() async throws {
         let records = [
             record(1, " Aga"), record(20, " Khan"), record(21, "inst"), record(30, " a field")
