@@ -36,7 +36,7 @@ if [[ -z "$SIGN_IDENTITY" ]]; then
   SIGN_IDENTITY="${CODE_SIGN_IDENTITY:-}"
 fi
 if [[ -z "$SIGN_IDENTITY" ]]; then
-  SIGN_IDENTITY="$(codesign -dvv "$SOURCE_APP" 2>&1 | sed -n 's/^Authority=//p' | head -n 1)"
+  SIGN_IDENTITY="$(codesign -dvv "$SOURCE_APP" 2>&1 | sed -n 's/^Authority=//p' | head -n 1 || true)"
 fi
 if [[ -z "$SIGN_IDENTITY" ]]; then
   SIGN_IDENTITY="$(security find-identity -p codesigning -v 2>/dev/null \
