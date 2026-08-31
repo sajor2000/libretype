@@ -28,7 +28,7 @@ public protocol ScreenWindowTextCapturing: Sendable {
 /// main-actor `ScreenContextController`. The heavy capture+OCR runs off the main actor inside the
 /// capturer's `async` call.
 @MainActor
-public final class WindowOCRCaptureEngine: ScreenTextProviding {
+public final class WindowOCRCaptureEngine: @MainActor ScreenTextProviding {
     public private(set) var latestScreenText: String?
 
     private let capturer: ScreenWindowTextCapturing
