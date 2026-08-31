@@ -6,17 +6,49 @@ and the fork discipline that keeps upstream merges cheap.
 
 ## Build bootstrap
 
-Requirements: macOS 14+, a recent Xcode, and Swift 5.10 or newer.
+Requirements: macOS 14+ for the app, and a recent Xcode with Swift 6 tools for development.
+Some packages declare `swift-tools-version: 6.0`; command-line Swift 5.10 is not sufficient.
 
 ```sh
 git clone https://github.com/sajor2000/libretype.git
 cd libretype
-swift build
+swift build --package-path Packages/ModelRuntime
 ```
 
-The fork is mid-rebrand: upstream `KeyType` identifiers, the Xcode workspace name, and the bundle
-identifier are still in place and are being renamed in a single isolated commit. Expect both names
-in the tree for now.
+The user-visible identity is Libretype (`io.github.sajor2000.libretype`); upstream's internal
+`KeyType` target, scheme, workspace, and package identifiers are retained to keep upstream merges
+small. There is no root `Package.swift`: select a package explicitly for SwiftPM commands.
+
+### Build the macOS app without installing it
+
+From the repository root:
+
+```sh
+KEYTYPE_SKIP_DEV_APP_INSTALL=1 xcodebuild \
+  -workspace KeyType.xcworkspace \
+  -scheme KeyType \
+  -configuration Debug \
+  -destination 'platform=macOS' \
+  -derivedDataPath .build/DerivedData-alpha-verification \
+  CODE_SIGNING_ALLOWED=NO \
+  CODE_SIGNING_REQUIRED=NO \
+  CODE_SIGN_IDENTITY= \
+  build
+```
+
+The compile-check product is `.build/DerivedData-alpha-verification/Build/Products/Debug/KeyType.app`.
+The skip flag bypasses the shared scheme's development-app installation hook; this command does
+not replace `/Applications/Libretype Dev.app` or grant Accessibility permissions. Signing is
+disabled for this compile check, so it does not prove that the app can load its model or run the
+interactive smoke test. Use the development installation workflow below for that separate check.
+CI sets the same skip flag. Xcode Run targets the installed `/Applications/Libretype Dev.app`.
+
+If a public framework download stalls before reporting progress, retry SwiftPM with
+`--disable-keychain --disable-netrc`, or add `-packageAuthorizationProvider netrc` to
+`xcodebuild` to avoid Keychain lookup. The Xcode option still permits `.netrc` credentials;
+it is not an anonymous-download guarantee. Do not change the pinned URL or checksum.
+See [the alpha verification record](docs/research/2026-08-30-alpha-build-verification.md)
+for the observed result and remaining runtime gates.
 
 ### The llama.cpp framework
 
