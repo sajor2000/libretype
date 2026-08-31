@@ -207,12 +207,14 @@ public final class DefaultCandidateFilter: CandidateFiltering {
         let stem = CurrentWordTypoGuard.trailingWord(of: request.context.beforeCursor)
         guard !stem.isEmpty else { return false } // model started a fresh word — its own, leave it
 
-        // For a healed request (ADR-019) the candidate re-emits the typed stem (`" coll…"`); strip it
-        // so the leading word is the genuinely-new continuation rather than an empty leading-space run
-        // — otherwise healed mid-word completions slip past the net entirely (ADR-025 follow-up).
-        let judged = request.requiredPrefixBytes.isEmpty
-            ? candidate.text
-            : MidWordHealing.strip(candidate.text, heal: String(decoding: request.requiredPrefixBytes, as: UTF8.self))
+        // For a healed request (ADR-019) the candidate re-emits the typed stem (`" coll…"`). Strip it
+        // for judgement, but preserve a separator when the branch starts a new word after the healed
+        // word. Display stripping removes that separator for insertion safety; this typo mirror needs
+        // to see it so `" brown fox"` is not reconstructed as the misspelling `"brownfox"`.
+        let judged = Self.textForCurrentWordJudgement(
+            candidate.text,
+            requiredPrefixBytes: request.requiredPrefixBytes
+        )
 
         let lead = CurrentWordTypoGuard.leadingWord(of: judged)
         guard !lead.isEmpty else { return false } // completion opened on a boundary — not our word
@@ -244,9 +246,10 @@ public final class DefaultCandidateFilter: CandidateFiltering {
         let stem = CurrentWordTypoGuard.trailingWord(of: request.context.beforeCursor)
         guard !stem.isEmpty else { return false } // model started a fresh word — leave it
 
-        let judged = request.requiredPrefixBytes.isEmpty
-            ? candidate.text
-            : MidWordHealing.strip(candidate.text, heal: String(decoding: request.requiredPrefixBytes, as: UTF8.self))
+        let judged = Self.textForCurrentWordJudgement(
+            candidate.text,
+            requiredPrefixBytes: request.requiredPrefixBytes
+        )
 
         let lead = CurrentWordTypoGuard.leadingWord(of: judged)
         guard !lead.isEmpty else { return false } // completion opened on a boundary — not our word
@@ -260,5 +263,20 @@ public final class DefaultCandidateFilter: CandidateFiltering {
         if contextWords.contains(word.lowercased()) { return false } // already-used term, keep
 
         return !wordRecognizer.canCompleteWord(prefix: word, language: request.context.detectedLanguage)
+    }
+
+    private static func textForCurrentWordJudgement(
+        _ text: String,
+        requiredPrefixBytes: [UInt8]
+    ) -> String {
+        guard !requiredPrefixBytes.isEmpty else { return text }
+        let heal = String(decoding: requiredPrefixBytes, as: UTF8.self)
+        guard !heal.isEmpty, text.hasPrefix(heal) else { return text }
+
+        let rest = text.dropFirst(heal.count)
+        if rest.first?.isWhitespace == true {
+            return String(rest)
+        }
+        return MidWordHealing.strip(text, heal: heal)
     }
 }

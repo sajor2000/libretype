@@ -61,7 +61,7 @@ final class CurrentWordTypoGuard {
     /// word is a misspelling — i.e. the engine should drop the child branch.
     func shouldDrop(parentText: String, childText: String) async -> Bool {
         guard isActive else { return false }
-        guard let word = currentWordJustClosed(parentText: parentText, childText: childText) else {
+        guard let word = await currentWordJustClosed(parentText: parentText, childText: childText) else {
             return false
         }
         return await isTypo(word)
@@ -71,11 +71,11 @@ final class CurrentWordTypoGuard {
 
     /// The completed current word if (and only if) the current word was open in `parentText` and is
     /// closed in `childText` with at least one model-contributed letter; otherwise `nil`.
-    func currentWordJustClosed(parentText: String, childText: String) -> String? {
+    func currentWordJustClosed(parentText: String, childText: String) async -> String? {
         // For a healed request the branch text re-emits the typed stem (`" coll…"`); strip it so the
         // reconstruction below works on the genuinely-new continuation rather than a leading space.
-        let parent = strippingHeal(parentText)
-        let child = strippingHeal(childText)
+        let parent = await strippingHeal(parentText)
+        let child = await strippingHeal(childText)
         guard !isClosed(parent), isClosed(child) else { return nil }
         let lead = Self.leadingWord(of: child)
         guard !lead.isEmpty else { return nil } // completion started with a boundary → not our word
@@ -86,8 +86,14 @@ final class CurrentWordTypoGuard {
     /// branch hasn't yet emitted the whole stem (`strip` returns the text unchanged unless it has the
     /// full `heal` prefix), in which case the unstripped text still starts with the heal's leading
     /// space and is safely treated as "not our word" by the empty-`leadingWord` guard above.
-    private func strippingHeal(_ text: String) -> String {
-        heal.isEmpty ? text : MidWordHealing.strip(text, heal: heal)
+    private func strippingHeal(_ text: String) async -> String {
+        guard !heal.isEmpty, text.hasPrefix(heal) else { return text }
+
+        let rest = text.dropFirst(heal.count)
+        if rest.first?.isWhitespace == true {
+            return String(rest)
+        }
+        return MidWordHealing.strip(text, heal: heal)
     }
 
     /// A current word is "closed" once a boundary character follows its leading run of word chars.

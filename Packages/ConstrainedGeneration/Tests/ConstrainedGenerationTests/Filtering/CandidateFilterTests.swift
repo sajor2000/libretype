@@ -329,6 +329,16 @@ final class CandidateFilterTests: XCTestCase {
         )
     }
 
+    func testHealedCompleteWordCanStartNextWordWithoutTypoSuppression() {
+        let filter = DefaultCandidateFilter(wordRecognizer: StubRecognizer(known: []))
+        XCTAssertNil(
+            filter.suppressionReason(
+                for: candidate(" brown fox jumps"),
+                request: request(beforeCursor: "The quick brown", requiredPrefixBytes: Array(" brown".utf8))
+            )
+        )
+    }
+
     func testTypoNetSkippedInCodeMode() {
         let filter = DefaultCandidateFilter(wordRecognizer: StubRecognizer(known: []))
         XCTAssertNil(

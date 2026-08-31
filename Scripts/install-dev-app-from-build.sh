@@ -2,6 +2,7 @@
 set -euo pipefail
 
 SOURCE_APP="${1:-${TARGET_BUILD_DIR:-}/${FULL_PRODUCT_NAME:-}}"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DEST_APP="${KEYTYPE_DEV_APP_PATH:-/Applications/Libretype Dev.app}"
 DEV_APP_NAME="${KEYTYPE_DEV_APP_NAME:-Libretype Dev}"
 DEV_BUNDLE_ID="${KEYTYPE_DEV_BUNDLE_ID:-io.github.sajor2000.libretype.dev}"
@@ -51,7 +52,7 @@ if [[ -z "$SIGN_IDENTITY" ]]; then
   SIGN_IDENTITY="-"
 fi
 
-codesign --force --deep --sign "$SIGN_IDENTITY" --identifier "$DEV_BUNDLE_ID" --options runtime --preserve-metadata=entitlements "$DEST_APP"
+codesign --force --deep --sign "$SIGN_IDENTITY" --identifier "$DEV_BUNDLE_ID" --options runtime --entitlements "$ROOT_DIR/KeyType/KeyType.entitlements" "$DEST_APP"
 codesign --verify --deep --strict "$DEST_APP"
 
 PLIST_BUNDLE_ID="$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$INFO_PLIST")"
